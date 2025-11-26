@@ -1,0 +1,20 @@
+# Параметры физической задачи
+[simulation]
+gamma = 1.4
+Soda_test = "test4"
+
+# Параметры схемы
+[scheme]
+name = "Kolgan"
+N_x = 100
+L_x = 1.0
+
+# Граничные условия. free - свободная граница; wall - непроницаемая стена; periodic - периодические
+x_right_bound = "free"
+x_left_bound = "free"
+CFL = 0.125
+
+# Параметры записи
+[recording]
+fo = 10
+step_max = 1000
