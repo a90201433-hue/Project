@@ -4,19 +4,24 @@
 #include <fstream>
 #include <algorithm>
 #include <math.h>
-#include <filesystem>
+#include <map>
+//#include <filesystem>
+#include "lib/FileProcessing.h"
 #include "lib/Init.h"
 #include "lib/BoundCond.h"
 #include "lib/RiemannSolver.h"
 #include "lib/Acoustic.h"
 #include "lib/GeneralFunctions.h"
 
+using DataArray = std::vector<std::vector<double>>;
+
 int N, fo, step_max, bound_case;
 int fict = 3;
 double L, t_max, x0, gamm, CFL;
 std::string x_left_bound, x_right_bound, Soda;
+std::vector<std::string> methods;
 
-namespace fs = std::filesystem;
+//namespace fs = std::filesystem;
 
 void GetDt(std::vector<std::vector<double>> W, std::vector<double> x, double& dt){
 	double c = 0, dx = L, u = 0;
@@ -36,116 +41,27 @@ void GetDt(std::vector<std::vector<double>> W, std::vector<double> x, double& dt
 	//std::cout << "dt= " << dt << std::endl;
 }
 
-void WriteToCSV(std::vector<std::vector<double>> W, std::vector<double> xc, double t, std::ofstream& file){
-	file << "time,x,rho,u,P,e" << std::endl;
-	std::vector<double> e1(N + 2 * fict - 1);
-	double e;
-	for (int i = 0; i < N + 2 * fict - 1; i++) {
-		e1[i] = W[i][2] / (W[i][0] * (gamm - 1));
-	}
-	double e0 = *std::min_element(e1.begin(), e1.end());
+
+void GetCommonDt(std::map<std::string, DataArray> W, std::vector<std::string> methods, std::vector<double> x, double& dt_common) {
 	
-	for (int i = 0; i < N + 2 * fict - 1; i++){
-		if (W[i][0] < 0.03) {
-			e = e0;
-		}
-		else {
-			e = W[i][2] / (W[i][0] * (gamm - 1));
-		}
-		
-		
-		file << t << "," << xc[i] 
-			<< "," << W[i][0] 
-			<< "," << W[i][1] 
-			<< "," << W[i][2] 
-			<< "," << e << std::endl;
+	std::vector<double> times;
+	double temp_dt = 0.0;
+	for (const std::string& method_name : methods) {
+		GetDt(W[method_name], x, temp_dt);
+		times.push_back(temp_dt);
 	}
-}
 
-void MoveToChache(const std::string& source_root_path, const std::string& cache_root_path) {
-
-	fs::path source_path = source_root_path;
-    	fs::path cache_path = cache_root_path;
-    	bool all_successful = true;
-
-    	try {
-        	// 1. Проверка существования исходной папки
-        	if (!fs::exists(source_path) || !fs::is_directory(source_path)) {
-            	std::cerr << "Ошибка: Исходная папка не существует или не является папкой: " << source_root_path << std::endl;
-            	return;
-        	}
-
-        	// 2. Убедиться, что папка Кэша существует. Если нет, создать ее.
-        	fs::create_directories(cache_path);
-
-		std::cout << "Очистка старых данных в папке Кэша: " << cache_root_path << std::endl;
-        	fs::remove_all(cache_path);
-
-        	// 3. Итерация по содержимому исходной папки
-        	for (const auto& entry : fs::directory_iterator(source_path)) {
-            		fs::path current_item = entry.path();
-            		// Получаем имя перемещаемого элемента (например, "Run_2025_A")
-            		fs::path item_filename = current_item.filename();
-            		// Формируем новый путь в папке Кэша
-            		fs::path destination_path = cache_path / item_filename;
-
-           	 	try {
-               	 		// Перемещаем элемент
-                		fs::rename(current_item, destination_path);
-                		std::cout << "Перемещено: " << current_item.string() << " -> " << destination_path.string() << std::endl;
-
-            		} catch (const fs::filesystem_error& e) {
-                	// Если возникает ошибка при перемещении одного элемента
-                		std::cerr << "Ошибка перемещения " << current_item.string() << ": " << e.what() << std::endl;
-                		all_successful = false; // Отмечаем, что не все прошло успешно
-            		}
-        	}
-
-    	} catch (const std::exception& e) {
-        	std::cerr << "Произошла критическая ошибка: " << e.what() << std::endl;
-        	return;
-    	}
-
-    	return;
-}
-
-
-
-void CleanDir(std::vector<std::string> folders){
-	for (const auto& folder : folders) {
-        	if (!fs::exists(folder)) {
-            		std::cout << "Папка не существует: " << folder << std::endl;
-            		continue;
-        	}
-
-        	for (const auto& entry : fs::directory_iterator(folder)) {
-            		if (fs::is_regular_file(entry)) {
-                		try {
-                    			fs::remove(entry);
-                    			
-                		} catch (const std::exception& e) {
-                    			std::cerr << "Ошибка при удалении " << entry.path() 
-                              		<< ": " << e.what() << std::endl;
-                		}
-            		}	
-        	}
-    	}
-
-	std::cout << "Очистка завершена." << std::endl;
-	return;	
-}
-
-void GetCommonDt(std::vector<std::vector<double>> W_G, std::vector<std::vector<double>> W_GK, std::vector<std::vector<double>> W_GKR, std::vector<std::vector<double>> W_ENO, std::vector<std::vector<double>> W_WENO, std::vector<double> x, double& dt_common) {
-
-	double dt_G, dt_GK, dt_GKR, dt_ENO, dt_WENO;
-
+	dt_common = *std::min_element(times.begin(), times.end());
+	return;
+	//double dt_G, dt_GK, dt_GKR, dt_ENO, dt_WENO;
+/*
 	GetDt(W_G, x, dt_G);
 	GetDt(W_GK, x, dt_GK);
 	GetDt(W_GKR, x, dt_GKR);
 	GetDt(W_ENO, x, dt_ENO);
 	GetDt(W_WENO, x, dt_WENO);
-
-	dt_common = std::min(std::min(std::min(std::min(dt_G, dt_GK), dt_GKR), dt_ENO), dt_WENO);
+*/
+	//dt_common = std::min(std::min(std::min(std::min(dt_G, dt_GK), dt_GKR), dt_ENO), dt_WENO);
 	//std::cout << "dt_common= " << dt_common << std::endl;
 
 }
@@ -282,19 +198,44 @@ void printProgressTree(double t, double t_max) {
     std::cout.flush();
 }
 
+void InitMaps(const std::vector<std::string>& methods, DataArray W_0,
+		std::map<std::string, DataArray>& W_map,
+    		std::map<std::string, DataArray>& W_new_map,
+    		std::map<std::string, DataArray>& W_b_map,
+    		std::map<std::string, DataArray>& F_map) {
+
+	const size_t Central_num = N + 2 * fict - 1;
+    	const size_t Bound_num = N + 2 * fict;
+
+	for (const std::string& method_name : methods) {
+        
+        	std::cout << "Инициализация массивов для метода: " << method_name << std::endl;
+
+		W_map[method_name] = W_0;
+        
+        	// --- 2. W_new ---
+        	// Создаем элемент в карте и сразу задаем размер
+       	 	W_new_map[method_name].resize(Central_num);
+        	InitialZeros(W_new_map[method_name], 3);
+        
+        	// --- 3. W_b ---
+        	W_b_map[method_name].resize(Bound_num);
+        	InitialZeros(W_b_map[method_name], 3);
+        
+        	// --- 4. F ---
+        	F_map[method_name].resize(Bound_num);
+        	InitialZeros(F_map[method_name], 2);
+    	}	
+	
+
+}
+
 int main() {
-	//MoveToChache("CSV_files/ActualCalc", "CSV_files/ChacheCalc");
-	std::vector<std::string> folders = {"CSV_files/Godunov",
-					    "CSV_files/Kolgan",
- 					    "CSV_files/Kolgan2",
-					    "CSV_files/Rodionov",
-					    "CSV_files/Rodionov2",
-					    "CSV_files/ENO",
-					    "CSV_files/WENO"};
-	CleanDir(folders);
+	MoveToChache("CSV_files/ActualRes", "CSV_files/ChacheRes");
+	ClearDirectoryContents("CSV_files/ActualRes");
+	
 	readConfig();
 	
-	//std::cout << bound_name << std::endl;
 	double dx = L / (N - 1);
 	std::vector<double> xc(N + 2 * fict - 1);
 	std::vector<double> x(N + 2 * fict);	
@@ -305,19 +246,33 @@ int main() {
 		
 	std::vector<std::vector<double>> W_0(N + 2*fict - 1);
 	InitValues(Soda, rho_L, u_L, P_L, rho_R, u_R, P_R, t_max, x0, xc, W_0);
+
+	for (auto& method: methods){	
+		CreateDir("CSV_files/ActualRes", method);
+
+	}
+	
+	std::map<std::string, DataArray> W_ByMethods;
+	std::map<std::string, DataArray> W_new_ByMethods;
+	std::map<std::string, DataArray> W_b_ByMethods;
+	std::map<std::string, DataArray> F_ByMethods;
+	
+	InitMaps(methods, W_0, W_ByMethods, W_new_ByMethods, W_b_ByMethods, F_ByMethods);
+
+	
 	
 	std::vector<double> W_L_riemann = {rho_L, u_L, P_L};
 	std::vector<double> W_R_riemann = {rho_R, u_R, P_R};
 	std::vector<double> W_star_riemann = {0, 0};
 	std::vector<double> W_riemann = {0, 0, 0};
 	double e_riemann;
-
+/*
 	std::vector<double> W_star_ac = {0, 0};
 	std::vector<double> W_ac = {0, 0, 0};
 	std::vector<std::vector<double>> W_ac1(N + 2 * fict -1);
 	InitialZeros(W_ac1, 3);
 	double e_ac;
-
+*/
 	//t_max = t_riemann;	
 	
 
@@ -336,98 +291,8 @@ int main() {
 	file.close();
 
 
-	// II. Акустика
-  	AcoustPStarAndUStar(W_L_riemann, W_R_riemann, W_star_ac);
-  	
-  	std::ofstream fileAc("CSV_files/acoust.csv");
-  	
-	fileAc << "x,rho,u,P,e" << std::endl;
+			
 
-	std::vector<double> e2(N + 2 * fict - 1);
-	for (int i = fict; i < N + fict; i++) {
-		W_ac1[i] = ConfigurationAcousticWaves(W_L_riemann, W_R_riemann, W_star_ac, x[i] - x0, t_max);
-		e2[i] = W_ac1[i][2] / (W_ac1[i][0] * (gamm - 1));
-	}
-	double e2_0 = *std::min_element(e2.begin(), e2.end());
-	for (int i = fict; i < N + fict; i++){
-		if (W_ac1[i][0] < 0.03) {
-			e_ac = e2_0;
-		}
-		else {
-			e_ac = W_ac1[i][2] / (W_ac1[i][0] * (gamm - 1));
-		}
-		fileAc << x[i] << "," <<  W_ac1[i][0] << "," <<  W_ac1[i][1] << "," <<  W_ac1[i][2] << "," << e_ac << std::endl;
-  	}
-  	fileAc.close();		
-
-
-	// For all methods
-	Grid(dx, x, xc);
-
-
-	// For Godunov
-	std::vector<std::vector<double>> W_G = W_0;
-	std::vector<std::vector<double>> W_new_G(N + 2 * fict - 1);
-	InitialZeros(W_new_G, 3);
-	std::vector<std::vector<double>> W_b_G(N + 2 * fict);
-	InitialZeros(W_b_G, 3);
-	std::vector<std::vector<double>> F_G(N + 2 * fict);
-	InitialZeros(F_G, 2);
-	
-	// For Kolgan
-	std::vector<std::vector<double>> W_GK = W_0;
-	std::vector<std::vector<double>> W_new_GK(N + 2 * fict - 1);
-	InitialZeros(W_new_GK, 3);
-	std::vector<std::vector<double>> W_b_GK(N + 2 * fict);
-	InitialZeros(W_b_GK, 3);
-	std::vector<std::vector<double>> F_GK(N + 2 * fict);
-	InitialZeros(F_GK, 2);
-	
-	// For Kolgan 2
-	std::vector<std::vector<double>> W_GK2 = W_0;
-	std::vector<std::vector<double>> W_new_GK2(N + 2 * fict - 1);
-	InitialZeros(W_new_GK2, 3);
-	std::vector<std::vector<double>> W_b_GK2(N + 2 * fict);
-	InitialZeros(W_b_GK2, 3);
-	std::vector<std::vector<double>> F_GK2(N + 2 * fict);
-	InitialZeros(F_GK2, 2);
-
-
-	// For Rodionov
-	std::vector<std::vector<double>> W_GKR = W_0;	
-	std::vector<std::vector<double>> W_new_GKR(N + 2 * fict - 1);
-	InitialZeros(W_new_GKR, 3);
-	std::vector<std::vector<double>> W_b_GKR(N + 2 * fict);
-	InitialZeros(W_b_GKR, 3);
-	std::vector<std::vector<double>> F_GKR(N + 2 * fict);
-	InitialZeros(F_GKR, 2);
-
-	// For Rodionov 2
-	std::vector<std::vector<double>> W_GKR2 = W_0;	
-	std::vector<std::vector<double>> W_new_GKR2(N + 2 * fict - 1);
-	InitialZeros(W_new_GKR2, 3);
-	std::vector<std::vector<double>> W_b_GKR2(N + 2 * fict);
-	InitialZeros(W_b_GKR2, 3);
-	std::vector<std::vector<double>> F_GKR2(N + 2 * fict);
-	InitialZeros(F_GKR2, 2);
-
-	// For ENO
-	std::vector<std::vector<double>> W_ENO = W_0;
-	std::vector<std::vector<double>> W_new_ENO(N + 2 * fict - 1);
-	InitialZeros(W_new_ENO, 3);
-	std::vector<std::vector<double>> W_b_ENO(N + 2 * fict);
-	InitialZeros(W_b_ENO, 3);
-	std::vector<std::vector<double>> F_ENO(N + 2 * fict);
-	InitialZeros(F_ENO, 3);
-
-	// For WENO
-	std::vector<std::vector<double>> W_WENO = W_0;
-	std::vector<std::vector<double>> W_new_WENO(N + 2 * fict - 1);
-	InitialZeros(W_new_WENO, 3);
-	std::vector<std::vector<double>> W_b_WENO(N + 2 * fict);
-	InitialZeros(W_b_WENO, 3);
-	std::vector<std::vector<double>> F_WENO(N + 2 * fict);
-	InitialZeros(F_WENO, 3);
 
 	// For all methods
 	double t = 0.0;
@@ -436,103 +301,44 @@ int main() {
 
 	while (t <= t_max) {
 		
-		GetDt(W_WENO, xc, dt_common);
-		//GetCommonDt(W_G, W_GK, W_GKR, W_ENO, W_WENO, x, dt_common);
+		//GetDt(W_WENO, xc, dt_common);
+		GetCommonDt(W_ByMethods, methods, x, dt_common);
+		//return 0;
 		
 		if (t + dt_common > t_max) {
 			dt_common = t_max - t;
 		}
 		t += dt_common;
-		//printProgressBar(t, t_max);
+		
 		printProgressTree(t, t_max);
-		/*UpdateArrays(W_G, W_new_G, W_b_G, F_G, x, dt_common, "Godunov");
-		UpdateArrays(W_GK, W_new_GK, W_b_GK, F_GK, x, dt_common, "Kolgan");
-		UpdateArrays(W_GK2, W_new_GK2, W_b_GK2, F_GK2, x, dt_common, "Kolgan2");
-		UpdateArrays(W_GKR, W_new_GKR, W_b_GKR, F_GKR, x, dt_common, "Rodionov");
-		UpdateArrays(W_GKR2, W_new_GKR2, W_b_GKR2, F_GKR2, x, dt_common, "Rodionov2");*/
-		//UpdateArrays(W_ENO, W_new_ENO, W_b_ENO, F_ENO, x, dt_common, "ENO");	
-		UpdateArrays(W_WENO, W_new_WENO, W_b_WENO, F_WENO, x, dt_common, "WENO", "R3");
-		/*BoundCond(W_G);
-		BoundCond(W_GK);
-		BoundCond(W_GK2);
-		BoundCond(W_GKR);
-		BoundCond(W_GKR2);*/
-		//BoundCond(W_ENO);
-		BoundCond(W_WENO);
 
-		if (step % fo == 0){
-			/*std::string filename = "CSV_files/Godunov/step_" + std::to_string(step) + ".csv";
-			std::ofstream file(filename);
-			WriteToCSV(W_G, xc, t, file);	
-			file.close();
+		for (std::string& method_name : methods) {
+			UpdateArrays(W_ByMethods[method_name], W_new_ByMethods[method_name], W_b_ByMethods[method_name], F_ByMethods[method_name], x, dt_common, method_name, "Euler");
+			BoundCond(W_ByMethods[method_name]);
+		}
+				if (step % fo == 0){
+			for (std::string& method_name : methods) {
+				std::string filename = "CSV_files/ActualRes/" + method_name + "/" + method_name + std::to_string(step) + ".csv";
+				file.open(filename);
+				WriteToCSV(W_ByMethods[method_name], xc, t, file);	
+				file.close();
+			}
 			
-			filename = "CSV_files/Kolgan/step_" + std::to_string(step) + ".csv";
-			file.open(filename);
-			WriteToCSV(W_GK, xc, t, file);	
-			file.close();
-
-			filename = "CSV_files/Kolgan2/step_" + std::to_string(step) + ".csv";
-			file.open(filename);
-			WriteToCSV(W_GK2, xc, t, file);	
-			file.close();
 			
-			filename = "CSV_files/Rodionov/step_" + std::to_string(step) + ".csv";
-			file.open(filename);
-			WriteToCSV(W_GKR, xc, t, file);	
-			file.close();
-
-			filename = "CSV_files/Rodionov2/step_" + std::to_string(step) + ".csv";
-			file.open(filename);
-			WriteToCSV(W_GKR2, xc, t, file);	
-			file.close();
-			
-			std::string filename = "CSV_files/ENO/step_" + std::to_string(step) + ".csv";
-			std::ofstream file(filename);
-			WriteToCSV(W_ENO, xc, t, file);	
-			file.close();
-			*/
-			std::string filename = "CSV_files/ActualCalc/WENO/step_" + std::to_string(step) + ".csv";
-			file.open(filename);
-			WriteToCSV(W_WENO, xc, t, file);	
-			file.close();
 		}		
 		if (t == t_max){
-			//std::cout  << "Max time";
-			/*std::ofstream file("CSV_files/Godunov.csv");
-			WriteToCSV(W_G, xc, t, file);
-			file.close();
-			
-			file.open("CSV_files/Kolgan.csv");
-			WriteToCSV(W_GK, xc, t, file);
-			file.close();
 
-			file.open("CSV_files/Kolgan2.csv");
-			WriteToCSV(W_GK2, xc, t, file);
-			file.close();
-
-			file.open("CSV_files/Rodionov.csv");
-			WriteToCSV(W_GKR, xc, t, file);
-			file.close();
-
-			file.open("CSV_files/Rodionov2.csv");
-			WriteToCSV(W_GKR2, xc, t, file);
-			file.close();
-			*/
-			//std::ofstream file("CSV_files/ENO.csv");
-			//file.open("CSV_files/ENO.csv");
-			//WriteToCSV(W_ENO, xc, t, file);
-			//file.close();
-			
-			std::ofstream file("CSV_files/WENO.csv");
-			WriteToCSV(W_WENO, xc, t, file);
-			file.close();
-
+			for (std::string& method_name : methods) {
+				std::string filename = "CSV_files/" + method_name + ".csv";
+				file.open(filename);
+				WriteToCSV(W_ByMethods[method_name], xc, t, file);	
+				file.close();
+			}
 			break;			
 		}
-		/*if (step > 100)
-			return 0;*/
 		step++;
 	}
+
 	std::cout << std::endl << "Завершено успешно." << std::endl;	
 	return 0;
 

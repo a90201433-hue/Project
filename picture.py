@@ -23,7 +23,7 @@ def ReadingFile(name):
     e = data['e']
 
 
-colors = ['purple', '-.k']
+colors = ['blue', 'red','purple', '-.k']
 global n
 n = 0
 
@@ -57,20 +57,20 @@ fig, axs = plt.subplots(2, 2, figsize=(9, 7), sharex=True)
 global alpha
 alpha = 1
 
-#ReadingFile('Godunov')
-#FillAxes()
+ReadingFile('Godunov')
+FillAxes()
 
-#ReadingFile('Kolgan')
-#FillAxes()
+ReadingFile('Kolgan')
+FillAxes()
 
 #ReadingFile('Rodionov')
 #FillAxes()
 
-#ReadingFile('ENO')
-#FillAxes()
-
-ReadingFile('WENO')
+ReadingFile('ENO')
 FillAxes()
+
+#ReadingFile('WENO')
+#FillAxes()
 
 #ReadingFile('acoust')
 #FillAxes()
@@ -80,7 +80,7 @@ ReadingFile('Riemann')
 FillAxes()
 
 # Единственная легенда вне графиков
-labels = ['ENO', 'Analytical']
+labels = ['Godunov', 'Kolgan', 'ENO', 'Analytical']
 fig.legend(labels, loc='center left', bbox_to_anchor=(0.9, 0.5), fontsize=12)
 
 for ax in axs.flatten():

@@ -5,7 +5,7 @@ Soda_test = "test4"
 
 # Параметры схемы
 [scheme]
-name = "Kolgan"
+methods = []
 N_x = 100
 L_x = 1.0
 

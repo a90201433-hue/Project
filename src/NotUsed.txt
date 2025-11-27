@@ -1,0 +1,94 @@
+// II. Акустика
+  	AcoustPStarAndUStar(W_L_riemann, W_R_riemann, W_star_ac);
+  	
+  	std::ofstream fileAc("CSV_files/acoust.csv");
+  	
+	fileAc << "x,rho,u,P,e" << std::endl;
+
+	std::vector<double> e2(N + 2 * fict - 1);
+	for (int i = fict; i < N + fict; i++) {
+		W_ac1[i] = ConfigurationAcousticWaves(W_L_riemann, W_R_riemann, W_star_ac, x[i] - x0, t_max);
+		e2[i] = W_ac1[i][2] / (W_ac1[i][0] * (gamm - 1));
+	}
+	double e2_0 = *std::min_element(e2.begin(), e2.end());
+	for (int i = fict; i < N + fict; i++){
+		if (W_ac1[i][0] < 0.03) {
+			e_ac = e2_0;
+		}
+		else {
+			e_ac = W_ac1[i][2] / (W_ac1[i][0] * (gamm - 1));
+		}
+		fileAc << x[i] << "," <<  W_ac1[i][0] << "," <<  W_ac1[i][1] << "," <<  W_ac1[i][2] << "," << e_ac << std::endl;
+  	}
+  	fileAc.close();
+
+
+// For all methods
+	//Grid(dx, x, xc);
+
+
+	// For Godunov
+	std::vector<std::vector<double>> W_G = W_0;
+	std::vector<std::vector<double>> W_new_G(N + 2 * fict - 1);
+	InitialZeros(W_new_G, 3);
+	std::vector<std::vector<double>> W_b_G(N + 2 * fict);
+	InitialZeros(W_b_G, 3);
+	std::vector<std::vector<double>> F_G(N + 2 * fict);
+
+	
+	// For Kolgan
+	std::vector<std::vector<double>> W_GK = W_0;
+	std::vector<std::vector<double>> W_new_GK(N + 2 * fict - 1);
+	InitialZeros(W_new_GK, 3);
+	std::vector<std::vector<double>> W_b_GK(N + 2 * fict);
+	InitialZeros(W_b_GK, 3);
+	std::vector<std::vector<double>> F_GK(N + 2 * fict);
+	InitialZeros(F_GK, 2);
+
+	// For Kolgan 2
+	std::vector<std::vector<double>> W_GK2 = W_0;
+	std::vector<std::vector<double>> W_new_GK2(N + 2 * fict - 1);
+	InitialZeros(W_new_GK2, 3);
+	std::vector<std::vector<double>> W_b_GK2(N + 2 * fict);
+	InitialZeros(W_b_GK2, 3);
+	std::vector<std::vector<double>> F_GK2(N + 2 * fict);
+	InitialZeros(F_GK2, 2);
+
+
+	// For Rodionov
+	std::vector<std::vector<double>> W_GKR = W_0;	
+	std::vector<std::vector<double>> W_new_GKR(N + 2 * fict - 1);
+	InitialZeros(W_new_GKR, 3);
+	std::vector<std::vector<double>> W_b_GKR(N + 2 * fict);
+	InitialZeros(W_b_GKR, 3);
+	std::vector<std::vector<double>> F_GKR(N + 2 * fict);
+	InitialZeros(F_GKR, 2);
+
+	// For Rodionov 2
+	std::vector<std::vector<double>> W_GKR2 = W_0;	
+	std::vector<std::vector<double>> W_new_GKR2(N + 2 * fict - 1);
+	InitialZeros(W_new_GKR2, 3);
+	std::vector<std::vector<double>> W_b_GKR2(N + 2 * fict);
+	InitialZeros(W_b_GKR2, 3);
+	std::vector<std::vector<double>> F_GKR2(N + 2 * fict);
+	InitialZeros(F_GKR2, 2);
+
+	// For ENO
+	std::vector<std::vector<double>> W_ENO = W_0;
+	std::vector<std::vector<double>> W_new_ENO(N + 2 * fict - 1);
+	InitialZeros(W_new_ENO, 3);
+	std::vector<std::vector<double>> W_b_ENO(N + 2 * fict);
+	InitialZeros(W_b_ENO, 3);
+	std::vector<std::vector<double>> F_ENO(N + 2 * fict);
+	InitialZeros(F_ENO, 3);
+
+	// For WENO
+	std::vector<std::vector<double>> W_WENO = W_0;
+	std::vector<std::vector<double>> W_new_WENO(N + 2 * fict - 1);
+	InitialZeros(W_new_WENO, 3);
+	std::vector<std::vector<double>> W_b_WENO(N + 2 * fict);
+	InitialZeros(W_b_WENO, 3);
+	std::vector<std::vector<double>> F_WENO(N + 2 * fict);
+	InitialZeros(F_WENO, 3);
+
+
