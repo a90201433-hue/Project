@@ -8,7 +8,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter, FFMpegWriter
 
 # === НАСТРОЙКИ ===
 BASE_DIR = "./"
-METHOD_DIRS = ["CSV_files/Godunov", "CSV_files/Kolgan2", "CSV_files/Rodionov2", "CSV_files/ENO", "CSV_files/WENO"]      # Если оставить [], то методы найдутся автоматически
+METHOD_DIRS = ["CSV_files/WENO"]      # Если оставить [], то методы найдутся автоматически
 
 #METHOD_DIRS = ["CSV_files/Godunov", "CSV_files/Kolgan2", "CSV_files/ENO" ]
 X_COLUMN = "x"

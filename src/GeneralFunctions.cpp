@@ -31,13 +31,12 @@ typedef void (*FluxFunc) (
 	std::vector<std::vector<double>> W_L,
 	std::vector<std::vector<double>> W_R,
 	std::vector<std::vector<double>>& F_left,
-	std::vector<std::vector<double>>& F_right
-);
+	std::vector<std::vector<double>>& F_right);
 
 void GodunovStreams(
 	std::vector<std::vector<double>> W,
-	std::vector<std::vector<double>>& F
-) {
+	std::vector<std::vector<double>>& F) {
+
 	InitialZeros(F, 3);
 	for (int i = fict; i < N + fict; i++) {
 		F[i][0] = W[i][0] * W[i][1]; // rho*u
@@ -54,8 +53,8 @@ void ConservativeFlux(
 	std::vector<std::vector<double>> W_L,
 	std::vector<std::vector<double>> W_R,
     	std::vector<std::vector<double>>& F_left,
-    	std::vector<std::vector<double>>& F_right
-) {
+    	std::vector<std::vector<double>>& F_right) {
+
 	GodunovStreams(W, F_left);
     	F_right = F_left; 
 }
@@ -65,8 +64,8 @@ void NonConservativeFlux(
 	std::vector<std::vector<double>> W_L,
 	std::vector<std::vector<double>> W_R,
     	std::vector<std::vector<double>>& F_left,
-    	std::vector<std::vector<double>>& F_right
-) {
+    	std::vector<std::vector<double>>& F_right) {
+
     	GodunovStreams(W_L, F_right);  
     	GodunovStreams(W_R, F_left);   
 }
@@ -80,8 +79,7 @@ typedef void (*TimeFunc)(
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
-	double dt
-);
+	double dt);
 
 void Euler(
 	std::vector<std::vector<double>>& W_new, 
@@ -90,18 +88,21 @@ void Euler(
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
-	double dt
-) {
+	double dt) {
+
 	std::vector<std::vector<double>> F(N + 2 * fict);
 	InitialZeros(F, 3);
     
 	GetFluxes(W, F, method, x, dt);
 	for (int i = init_idx; i < end_idx; i++) {
 		double dx = x[i + 1] - x[i];
+
 		W_new[i][0] = std::max(1e-7, W[i][0] 
 			    - dt/dx * (F[i + 1][0] - F[i][0]));
+
 		W_new[i][1] = (1.0 / W_new[i][0]) * (W[i][0] * W[i][1] 
 			    -  dt/dx * (F[i + 1][1] - F[i][1]));	
+
 		W_new[i][2] = std::max(1e-7, (gamm - 1.0) 
 			    * (0.5 * (W[i][0] * std::pow(W[i][1], 2) 
 			    - W_new[i][0] * std::pow(W_new[i][1], 2)) 
@@ -116,8 +117,8 @@ void RK3(
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
-	double dt
-) {
+	double dt) {
+
 	std::vector<std::vector<double>> W1(N + 2 * fict - 1);
 	InitialZeros(W1, 3);
 	std::vector<std::vector<double>> W2(N + 2 * fict - 1);
@@ -194,8 +195,8 @@ void TimeRodionovPredictor(
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
-	double dt
-) {
+	double dt) {
+
 	std::vector<std::vector<double>> F_left(N + 2 * fict); 
 	InitialZeros(F_left, 3);
 	std::vector<std::vector<double>> F_right(N + 2 * fict); 
@@ -257,8 +258,7 @@ void ENO(
 	std::vector<std::vector<double>> U,
 	std::vector<std::vector<double>> Slope,
 	std::vector<std::vector<double>>& U_L,
-	std::vector<std::vector<double>>& U_R
-) {	
+	std::vector<std::vector<double>>& U_R) {	
 
 	double h = L / (N - 1);
 
@@ -329,15 +329,18 @@ std::vector<double> WENOWeight(double f1, double f2, double f3, double f4, doubl
 	all_weights = {alpha0/(alpha0 + alpha1 + alpha2), 
 		       alpha1/(alpha0 + alpha1 + alpha2), 
 		       alpha2/(alpha0 + alpha1 + alpha2)};
-	
+	for (int i = 0; i < 3; i++){
+		if (all_weights[i] < 1e-6)
+			all_weights[i] = 0.0;
+	}	
 	return all_weights;
 }
 
 void WENO(
 	std::vector<std::vector<double>> U,
 	std::vector<std::vector<double>>& U_L,
-	std::vector<std::vector<double>>& U_R
-) {	
+	std::vector<std::vector<double>>& U_R) {	
+
 	double value1, value2, value3;
 	double h = L / (N - 1);
 	std::vector<double> coeffs = {0.0, 0.0, 0.0};
@@ -346,28 +349,28 @@ void WENO(
 		for (int i = fict - 1; i < N + fict - 1; i++) {
 			
 			coeffs = WENOWeight(U[i - 2][j], U[i - 1][j], U[i][j], U[i + 1][j], U[i + 2][j]);
-			//std::cout << "i = " << i << ", j = " << j << std::endl;
-			//std::cout << "coeffs[0] = " << coeffs[0] << ", " << "coeffs[1] = " << coeffs[1] << ", " << "coeffs[2] = " << coeffs[2] << std::endl;
+			
 
 			if (j == 0 || j == 2) { 
 				value1 = ENOPolinom(U[i][j], U[i + 1][j], U[i + 2][j], h);
 				value2 = ENOPolinom(U[i - 1][j], U[i][j], U[i + 1][j], 2 * h);
 				value3 = ENOPolinom(U[i - 2][j], U[i - 1][j], U[i][j], 3 * h);
-				//std::cout << "value1 = " << value1 << ", " << "value2 = " << value2 << ", " << "value3 = " << value3 << std::endl;
+				
 
 				U_L[i + 1][j] = coeffs[0] * value1 + coeffs[1] * value2 + coeffs[2] * value3;
-				U_L[i + 1][j] = std::max(1e-8, U_L[i + 1][j]);
+				U_L[i + 1][j] = std::max(1e-6, U_L[i + 1][j]);
 
 			} else {
-			
+					
 				U_L[i + 1][j] = coeffs[0] * ENOPolinom(U[i][j], U[i + 1][j], U[i + 2][j], h) 
 				      	+ coeffs[1] * ENOPolinom(U[i - 1][j], U[i][j], U[i + 1][j], 2 * h)
 				      	+ coeffs[2] * ENOPolinom(U[i - 2][j], U[i - 1][j], U[i][j], 3 * h);
+				
 			}
-			//std::cout << "U_L[" << i + 1 << "][" << j << "] = " << U_L[i + 1][j] << std::endl;
+			
 
 		}
-		//std::cout << std::endl;
+		
 		for (int i = fict; i < N + fict; i++) {
 			coeffs = WENOWeight(U[i - 2][j], U[i - 1][j], U[i][j], U[i + 1][j], U[i + 2][j]);
 			if (j == 0 || j == 2) { 
@@ -375,26 +378,22 @@ void WENO(
 				value2 = ENOPolinom(U[i - 1][j], U[i][j], U[i + 1][j], h);
 				value3 = ENOPolinom(U[i - 2][j], U[i - 1][j], U[i][j], 2 * h);
 				U_R[i][j] = coeffs[0] * value1 + coeffs[1] * value2 + coeffs[2] * value3;
-				U_R[i][j] = std::max(1e-8, U_R[i][j]);
+				U_R[i][j] = std::max(1e-6, U_R[i][j]);
 
 			} else {
 				U_R[i][j] = coeffs[0] * ENOPolinom(U[i][j], U[i + 1][j], U[i + 2][j], 0) 
 				  	+ coeffs[1] * ENOPolinom(U[i - 1][j], U[i][j], U[i + 1][j], h)
 				  	+ coeffs[2] * ENOPolinom(U[i - 2][j], U[i - 1][j], U[i][j], 2 * h);
 			}
-			//std::cout << "U_R[" << i << "][" << j << "] = " << U_R[i][j] << std::endl;
+			
 		}
 	}
 }
 
 void WENOStreams(
 	std::vector<std::vector<double>> W,
-	std::vector<std::vector<double>>& F
-) {	
+	std::vector<std::vector<double>>& F) {	
 
-	//std::vector<std::vector<double>> U(N + 2 * fict - 1);
-	//ConvertWtoU(W, U);
-		
 	std::vector<std::vector<double>> W_L(N + 2 * fict);
 	std::vector<std::vector<double>> W_R(N + 2 * fict);
 	InitialZeros(W_L, 3);
@@ -437,7 +436,8 @@ void WENOStreams(
 		alpha[i] = 0.0;
 	}
 	for (int i = 0; i < N + 2 * fict; i++) {
-		alpha[i] = std::max(std::abs(c_R[i]), std::abs(c_L[i]));
+		alpha[i] = std::max(std::abs(W_L[i][1]) + c_L[i], std::abs(W_R[i][1]) + c_R[i]);
+		//alpha[i] = std::max(std::abs(c_R[i]), std::abs(c_L[i]));
 	}
 
 	//WENO streams
@@ -574,14 +574,9 @@ void FindBoundValues(
 
 	else if (method == "ENO") {
 
-		//ConvertWtoU(W, U);
+		
 		FindSlopes(W, Slope);
 		ENO(W, Slope, W_L, W_R);
-		
-		/*
-		ConvertUtoW(W_L, U_L);
-		ConvertUtoW(W_R, U_R);
-		*/	
 
 		for (int i = fict; i < N + fict; i++) {
 			NewtonForPressure(W_L[i], W_R[i], W_b[i], 1e-6);	

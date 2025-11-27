@@ -62,6 +62,55 @@ void WriteToCSV(std::vector<std::vector<double>> W, std::vector<double> xc, doub
 	}
 }
 
+void MoveToChache(const std::string& source_root_path, const std::string& cache_root_path) {
+
+	fs::path source_path = source_root_path;
+    	fs::path cache_path = cache_root_path;
+    	bool all_successful = true;
+
+    	try {
+        	// 1. Проверка существования исходной папки
+        	if (!fs::exists(source_path) || !fs::is_directory(source_path)) {
+            	std::cerr << "Ошибка: Исходная папка не существует или не является папкой: " << source_root_path << std::endl;
+            	return;
+        	}
+
+        	// 2. Убедиться, что папка Кэша существует. Если нет, создать ее.
+        	fs::create_directories(cache_path);
+
+		std::cout << "Очистка старых данных в папке Кэша: " << cache_root_path << std::endl;
+        	fs::remove_all(cache_path);
+
+        	// 3. Итерация по содержимому исходной папки
+        	for (const auto& entry : fs::directory_iterator(source_path)) {
+            		fs::path current_item = entry.path();
+            		// Получаем имя перемещаемого элемента (например, "Run_2025_A")
+            		fs::path item_filename = current_item.filename();
+            		// Формируем новый путь в папке Кэша
+            		fs::path destination_path = cache_path / item_filename;
+
+           	 	try {
+               	 		// Перемещаем элемент
+                		fs::rename(current_item, destination_path);
+                		std::cout << "Перемещено: " << current_item.string() << " -> " << destination_path.string() << std::endl;
+
+            		} catch (const fs::filesystem_error& e) {
+                	// Если возникает ошибка при перемещении одного элемента
+                		std::cerr << "Ошибка перемещения " << current_item.string() << ": " << e.what() << std::endl;
+                		all_successful = false; // Отмечаем, что не все прошло успешно
+            		}
+        	}
+
+    	} catch (const std::exception& e) {
+        	std::cerr << "Произошла критическая ошибка: " << e.what() << std::endl;
+        	return;
+    	}
+
+    	return;
+}
+
+
+
 void CleanDir(std::vector<std::string> folders){
 	for (const auto& folder : folders) {
         	if (!fs::exists(folder)) {
@@ -234,6 +283,7 @@ void printProgressTree(double t, double t_max) {
 }
 
 int main() {
+	//MoveToChache("CSV_files/ActualCalc", "CSV_files/ChacheCalc");
 	std::vector<std::string> folders = {"CSV_files/Godunov",
 					    "CSV_files/Kolgan",
  					    "CSV_files/Kolgan2",
@@ -401,7 +451,7 @@ int main() {
 		UpdateArrays(W_GKR, W_new_GKR, W_b_GKR, F_GKR, x, dt_common, "Rodionov");
 		UpdateArrays(W_GKR2, W_new_GKR2, W_b_GKR2, F_GKR2, x, dt_common, "Rodionov2");*/
 		//UpdateArrays(W_ENO, W_new_ENO, W_b_ENO, F_ENO, x, dt_common, "ENO");	
-		UpdateArrays(W_WENO, W_new_WENO, W_b_WENO, F_WENO, x, dt_common, "WENO", "RK3");
+		UpdateArrays(W_WENO, W_new_WENO, W_b_WENO, F_WENO, x, dt_common, "WENO", "R3");
 		/*BoundCond(W_G);
 		BoundCond(W_GK);
 		BoundCond(W_GK2);
@@ -441,7 +491,7 @@ int main() {
 			WriteToCSV(W_ENO, xc, t, file);	
 			file.close();
 			*/
-			std::string filename = "CSV_files/WENO/step_" + std::to_string(step) + ".csv";
+			std::string filename = "CSV_files/ActualCalc/WENO/step_" + std::to_string(step) + ".csv";
 			file.open(filename);
 			WriteToCSV(W_WENO, xc, t, file);	
 			file.close();
@@ -479,6 +529,8 @@ int main() {
 
 			break;			
 		}
+		/*if (step > 100)
+			return 0;*/
 		step++;
 	}
 	std::cout << std::endl << "Завершено успешно." << std::endl;	
