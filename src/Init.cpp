@@ -10,7 +10,7 @@
 extern int N, fo, fict, step_max, bound_case;
 extern double L, t_max, x0, gamm, CFL;
 extern std::string x_left_bound, x_right_bound, Soda;
-
+extern std::vector<std::string> methods;
 
 void readConfig() {
 
@@ -25,8 +25,27 @@ void readConfig() {
 	gamm = toml.root["simulation"].table["gamma"].number;
 	Soda = toml.root["simulation"].table["Soda_test"].str;
 
-
 	auto& scheme = toml.root["scheme"].table;
+	
+	//auto& method_names = scheme["methods"];
+
+	if (scheme.count("methods") == 0) {
+		std::cout << "\nНе найдены виды схем. Используется схема Годунова." << std::endl;
+    		methods = {"Godunov"};
+	} else {
+    		TomlValue &arr = scheme["methods"];
+
+    		// извлекаем список
+    		for (auto &x : arr.list)
+        	methods.push_back(x.str);
+
+    		// если список пустой
+    		if (methods.empty()){
+			std::cout << "\nНе найдены виды схем. Используется схема Годунова." << std::endl;	
+        		methods.push_back("Godunov");
+		}
+	}		
+	
 
 	N = scheme["N_x"].number;
 	L = scheme["L_x"].number;
