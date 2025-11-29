@@ -318,7 +318,7 @@ int main() {
 		}
 				if (step % fo == 0){
 			for (std::string& method_name : methods) {
-				std::string filename = "CSV_files/ActualRes/" + method_name + "/" + method_name + std::to_string(step) + ".csv";
+				std::string filename = "CSV_files/ActualRes/" + method_name + "/step_"  + std::to_string(step) + ".csv";
 				file.open(filename);
 				WriteToCSV(W_ByMethods[method_name], xc, t, file);	
 				file.close();

@@ -1,92 +1,148 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-gamm = 1.4
+# Встроенная библиотека для работы с конфигурационными файлами (INI-подобный формат)
+# Используется ручной парсинг, так как нет библиотеки toml
 
-global file_path
-global data
-global x, rho, u, P, e
+# --- КОНСТАНТЫ И КОНФИГУРАЦИЯ ---
+
+GAMMA = 1.4
+
+# СЛОВАРЬ ДЛЯ АВТОМАТИЧЕСКОГО НАЗНАЧЕНИЯ ЦВЕТОВ И СТИЛЕЙ
+# Если нужно больше методов, просто добавьте их сюда.
+METHOD_STYLES = {
+    'Godunov': {'color': 'blue', 'linestyle': '-', 'label': 'Godunov'},
+    'Kolgan': {'color': 'red', 'linestyle': '-', 'label': 'Godunov-Kolgan'},
+    'ENO': {'color': 'purple', 'linestyle': '-', 'label': 'ENO'},
+    'WENO': {'color': 'green', 'linestyle': '-', 'label': 'WENO'},
+    'Rodionov': {'color': 'cyan', 'linestyle': '--', 'label': 'Godunov-Kolgan-Rodionov'},
+    # Аналитическое решение (для него устанавливаем alpha=0.6)
+    'Riemann': {'color': 'black', 'linestyle': '-.', 'label': 'Analytical'}
+}
+
+# --- ГЛОБАЛЬНЫЕ ДАННЫЕ (ОЧИЩЕНО) ---
+
+# Вместо 'global' в функциях будем возвращать данные
+def read_config_methods(config_path='config.toml'):
+    """Читает список методов из config.toml вручную."""
+    methods_list = []
+    try:
+        with open(config_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('methods ='):
+                    value = line.replace('methods =', '', 1).strip()
+                    if value.startswith('[') and value.endswith(']'):
+                        value = value.strip('[]')
+                        # Разбиваем по запятой, убираем кавычки и пробелы
+                        methods_list = [
+                            m.strip().strip('"') for m in value.split(',') if m.strip()
+                        ]
+                    break
+    except FileNotFoundError:
+        print(f"Ошибка: Файл {config_path} не найден.")
+        # Запасной список
+        return ['Godunov']
+    
+    # Если список в конфиге пуст, используем запасной
+    return methods_list if methods_list else ['Godunov']
 
 
-
-def ReadingFile(name):
-    global file_path
-    global data
-    global x, rho, u, P, e
-
-    file_path = "CSV_files/" + name + ".csv"  # путь к вашему файлу
-    data = pd.read_csv(file_path)
-    x = data['x']
-    rho = data['rho']
-    u = data['u']
-    P = data['P']
-    e = data['e']
+def read_data_file(name):
+    """Считывает данные из CSV-файла и возвращает DataFrame."""
+    file_path = "CSV_files/" + name + ".csv"
+    try:
+        data = pd.read_csv(file_path)
+        return data
+    except FileNotFoundError:
+        print(f"Предупреждение: Не найден файл CSV для метода '{name}' по пути '{file_path}'.")
+        return None
 
 
-colors = ['blue', 'red','purple', '-.k']
-global n
-n = 0
-
-def FillAxes():
-    global file_path
-    global data
-    global x, rho, u, P, e
-    global n
-    global alpha
-
-    axs[0, 0].plot(x, rho, colors[n], alpha=alpha)
+def fill_axes(axs, data, method_name, alpha=1.0):
+    """Строит графики для заданного набора данных и метода."""
+    
+    style_info = METHOD_STYLES.get(method_name, 
+                                   {'color': 'gray', 'linestyle': '-', 'label': method_name})
+    
+    # --- ВАЖНОЕ ИЗМЕНЕНИЕ: используем именованные аргументы color и linestyle ---
+    
+    # Плотность (rho)
+    axs[0, 0].plot(data['x'], data['rho'], 
+                   color=style_info['color'], 
+                   linestyle=style_info['linestyle'], 
+                   alpha=alpha)
     axs[0, 0].set_xlabel('x')
     axs[0, 0].set_ylabel(r'$\rho$')
     
-    axs[0, 1].plot(x, u, colors[n], alpha=alpha)
+    # Скорость (u)
+    axs[0, 1].plot(data['x'], data['u'], 
+                   color=style_info['color'], 
+                   linestyle=style_info['linestyle'], 
+                   alpha=alpha)
     axs[0, 1].set_xlabel('x')
     axs[0, 1].set_ylabel('u')
 
-    axs[1, 0].plot(x, P, colors[n], alpha=alpha)
+    # Давление (P)
+    axs[1, 0].plot(data['x'], data['P'], 
+                   color=style_info['color'], 
+                   linestyle=style_info['linestyle'], 
+                   alpha=alpha)
     axs[1, 0].set_xlabel('x')
     axs[1, 0].set_ylabel('P')
 
-    axs[1, 1].plot(x, e, colors[n], alpha=alpha)
+    # Энергия (e)
+    axs[1, 1].plot(data['x'], data['e'], 
+                   color=style_info['color'], 
+                   linestyle=style_info['linestyle'], 
+                   alpha=alpha)
     axs[1, 1].set_xlabel('x')
     axs[1, 1].set_ylabel(r'$\varepsilon$')
-    n += 1
+    
+    return style_info['label']
 
 
-plt.style.use('seaborn-v0_8')
-fig, axs = plt.subplots(2, 2, figsize=(9, 7), sharex=True)
-global alpha
-alpha = 1
+# --- ОСНОВНАЯ ЛОГИКА ---
 
-ReadingFile('Godunov')
-FillAxes()
+def main():
+    plt.style.use('seaborn-v0_8')
+    fig, axs = plt.subplots(2, 2, figsize=(9, 7), sharex=True)
 
-ReadingFile('Kolgan')
-FillAxes()
+    # 1. Считываем методы из конфига
+    methods_list = read_config_methods()
 
-#ReadingFile('Rodionov')
-#FillAxes()
+    # 2. Добавляем аналитическое решение в конец списка
+    analytical_method = 'Riemann'
+    if analytical_method not in methods_list:
+        methods_list_with_analytical = methods_list + [analytical_method]
+    else:
+        methods_list_with_analytical = methods_list
 
-ReadingFile('ENO')
-FillAxes()
+    legend_labels = []
 
-#ReadingFile('WENO')
-#FillAxes()
+    # 3. Цикл построения графиков
+    for method_name in methods_list_with_analytical:
+        
+        # Определяем прозрачность (alpha)
+        alpha = 0.6 if method_name == analytical_method else 1.0
+        
+        data = read_data_file(method_name)
+        
+        if data is not None:
+            label = fill_axes(axs, data, method_name, alpha)
+            legend_labels.append(label)
 
-#ReadingFile('acoust')
-#FillAxes()
+    # 4. Финальная настройка графиков
+    
+    # Единственная легенда вне графиков
+    fig.legend(legend_labels, loc='center left', bbox_to_anchor=(0.9, 0.5), fontsize=12)
 
-alpha = 0.6   
-ReadingFile('Riemann')
-FillAxes()
+    for ax in axs.flatten():
+        ax.grid(True, alpha=0.5)
 
-# Единственная легенда вне графиков
-labels = ['Godunov', 'Kolgan', 'ENO', 'Analytical']
-fig.legend(labels, loc='center left', bbox_to_anchor=(0.9, 0.5), fontsize=12)
+    plt.tight_layout(rect=[0, 0, 0.85, 1])
+    plt.savefig(f'output/picture.png', bbox_inches='tight', dpi=300, transparent=False)
+    plt.show()
 
-for ax in axs.flatten():
-    ax.grid(True, alpha=0.5)
-
-plt.tight_layout(rect=[0, 0, 0.85, 1])
-plt.savefig(f'output/picture.png', bbox_inches='tight', dpi=300, transparent=False)
-plt.show()
-
+if __name__ == '__main__':
+    main()
