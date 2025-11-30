@@ -116,6 +116,13 @@ void GetFluxes(
 	std::vector<double> x,
 	double dt
 );
+
+void MacCORMACK(
+	std::vector<std::vector<double>>& W,
+	std::vector<std::vector<double>> W_new,	
+	std::vector<double> x, 
+	double dt);
+
 void UpdateArrays(
 	std::vector<std::vector<double>>& W,
 	std::vector<std::vector<double>> W_new,

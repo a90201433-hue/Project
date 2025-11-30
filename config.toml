@@ -1,11 +1,11 @@
 # Параметры физической задачи
 [simulation]
 gamma = 1.4
-Soda_test = "test4"
+Soda_test = "test3"
 
 # Параметры схемы
 [scheme]
-methods = ["Godunov", "ENO", "WENO"]
+methods = ["MacCORMACK"]
 N_x = 100
 L_x = 1.0
 

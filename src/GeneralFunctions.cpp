@@ -11,6 +11,7 @@
 extern double gamm, L;
 extern int N, fict;
 
+using DataArray = std::vector<std::vector<double>>;
 typedef double (*RecFunc)(double a, double b);
 
 double minmod(double a, double b) {
@@ -605,6 +606,74 @@ void GetFluxes(
 		GodunovStreams(W_b, F);
 	}
 }
+
+void MacCORMACK(
+	std::vector<std::vector<double>>& W,
+	std::vector<std::vector<double>> W_new,	
+	std::vector<double> x, 
+	double dt){
+	
+	const size_t Central_num = N + 2 * fict - 1;
+    	//const size_t Bound_num = N + 2 * fict; 
+	
+	DataArray U(Central_num);
+	ConvertWtoU(W, U);
+	
+	DataArray F(Central_num);
+	InitialZeros(F, 3);
+	// Пока найдем потоки так
+	for (int i = 0; i < Central_num; i++) {
+		F[i][0] = W[i][0] * W[i][1]; // rho*u
+
+		F[i][1] = W[i][0] * std::pow(W[i][1], 2) + W[i][2]; // rho*u^2 + P
+		
+		double E = 0.5 * std::pow(W[i][1], 2) + W[i][2] / (W[i][0] * (gamm - 1.0));
+		F[i][2] = W[i][1] * (W[i][0] * E + W[i][2]); // u(rho*E + P)	
+	}
+	
+	DataArray U_tilde(Central_num);
+	InitialZeros(U_tilde, 3);
+	for (int j = 0; j < 3; j++) {
+		for (int i = fict; i < N + fict - 1; i++){
+			double dx = x[i + 1] - x[i];
+			U_tilde[i][j] = U[i][j] - dt/dx*(F[i + 1][j] - F[i][j]); 
+		}
+	}
+	BoundCond(U_tilde);
+
+	DataArray W_tilde(Central_num);
+	ConvertUtoW(W_tilde, U_tilde);
+	//BoundCond(W_tilde);
+
+	DataArray F_tilde(Central_num);
+	InitialZeros(F_tilde, 3);
+
+	for (int i = 0; i < Central_num; i++) {
+		F_tilde[i][0] = W_tilde[i][0] * W_tilde[i][1]; // rho*u
+
+		F_tilde[i][1] = W_tilde[i][0] * std::pow(W_tilde[i][1], 2) + W_tilde[i][2]; // rho*u^2 + P
+		
+		double E = 0.5 * std::pow(W_tilde[i][1], 2) + W_tilde[i][2] / (W_tilde[i][0] * (gamm - 1.0));
+		F_tilde[i][2] = W_tilde[i][1] * (W_tilde[i][0] * E + W_tilde[i][2]); // u(rho*E + P)	
+	}
+
+	DataArray U_new(Central_num);
+	InitialZeros(U_new, 3);
+
+	for (int j = 0; j < 3; j++) {
+		for (int i = fict; i < N + fict - 1; i++){
+			double dx = x[i + 1] - x[i];
+			U_new[i][j] = 0.5*(U[i][j] + U_tilde[i][j] - dt/dx*(F_tilde[i][j] - F_tilde[i - 1][j])); 
+		}
+	}
+	ConvertUtoW(W_new, U_new);
+
+	for (int i = fict; i < N + fict - 1; i++) {
+		W[i] = W_new[i];
+	}
+
+}
+
 void UpdateArrays(
 	std::vector<std::vector<double>>& W,
 	std::vector<std::vector<double>> W_new,
@@ -618,12 +687,16 @@ void UpdateArrays(
 	std::vector<std::vector<double>> W_L(N + 2 * fict);
 	std::vector<std::vector<double>> W_R(N + 2 * fict);
 
+	if (method == "MacCORMACK") {
+		MacCORMACK(W, W_new, x, dt);
+		return;
+	}
+	
 	if (time_method == "RK3") {
 		RK3(W_new, W, method, fict, N + fict - 1, x, dt);
 	} else {
 		Euler(W_new, W, method, fict, N + fict - 1, x, dt);
-	}
-	//std::cout << "Time method = " << time_method << std::endl;
+	}	
 
 	for (int i = fict; i < N + fict - 1; i++) {
 		W[i] = W_new[i];
