@@ -1,12 +1,12 @@
 # Параметры физической задачи
 [simulation]
 gamma = 1.4
-Soda_test = "test3"
+Soda_test = "test1"
 
 # Параметры схемы
 [scheme]
 methods = ["MacCORMACK"]
-N_x = 100
+N_x = 200
 L_x = 1.0
 
 # Граничные условия. free - свободная граница; wall - непроницаемая стена; periodic - периодические

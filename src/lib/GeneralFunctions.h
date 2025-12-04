@@ -5,26 +5,12 @@ typedef double (*RecFunc)(double a, double b);
 double minmod(double a, double b);
 
 
-typedef void (*FluxFunc) (
-	std::vector<std::vector<double>> W,
-	std::vector<std::vector<double>> W_L,
-	std::vector<std::vector<double>> W_R,
-	std::vector<std::vector<double>>& F_left,
-	std::vector<std::vector<double>>& F_right
-);
-void GodunovStreams(
+void Streams(
 	std::vector<std::vector<double>> W,
 	std::vector<std::vector<double>>& F
 );
-void ConservativeFlux(
-	std::vector<std::vector<double>> W,
-	std::vector<std::vector<double>> W_L,
-	std::vector<std::vector<double>> W_R,
-    	std::vector<std::vector<double>>& F_left,
-    	std::vector<std::vector<double>>& F_right
-);
-void NonConservativeFlux(
-    	std::vector<std::vector<double>> W,
+
+void LRStreams(
 	std::vector<std::vector<double>> W_L,
 	std::vector<std::vector<double>> W_R,
     	std::vector<std::vector<double>>& F_left,
@@ -32,23 +18,11 @@ void NonConservativeFlux(
 );
 
 
-typedef void (*TimeFunc)(
-	std::vector<std::vector<double>>& W_new, 
-	std::vector<std::vector<double>> W, 
-	std::vector<std::vector<double>> W_L,
-	std::vector<std::vector<double>> W_R,
-	FluxFunc ComputeFlux,
-	int init_idx, 
-	int end_idx, 
-	std::vector<double> x, 
-	double dt
-);
-void TimeRodionovPredictor(
+void TimePredictor(
 	std::vector<std::vector<double>>& W_new,
 	std::vector<std::vector<double>> W,
 	std::vector<std::vector<double>> W_L,
 	std::vector<std::vector<double>> W_R,
-	FluxFunc ComputeFlux,
 	int init_idx,
 	int end_idx,
 	std::vector<double> x,
@@ -73,31 +47,13 @@ void RK3(
 	double dt
 );
 void FindSlopes(std::vector<std::vector<double>> W, std::vector<std::vector<double>>& Slope);
+
 void ReconstructValues(
 	std::vector<std::vector<double>> W, 
 	std::vector<std::vector<double>> Slope,
 	std::vector<std::vector<double>>& W_L,
 	std::vector<std::vector<double>>& W_R, 
 	RecFunc function
-);
-
-
-double ENOPolinom(double f1, double f2, double f3, double x);
-void ENO(
-	std::vector<std::vector<double>> U,
-	std::vector<std::vector<double>> Slope,
-	std::vector<std::vector<double>>& U_L,
-	std::vector<std::vector<double>>& U_R
-);
-std::vector<double> WENOWeight(double f1, double f2, double f3, double f4, double f5);
-void WENO(
-	std::vector<std::vector<double>> U,
-	std::vector<std::vector<double>>& U_L,
-	std::vector<std::vector<double>>& U_R
-);
-void WENOStreams(
-	std::vector<std::vector<double>> W,
-	std::vector<std::vector<double>>& F
 );
 
 
@@ -122,6 +78,16 @@ void MacCORMACK(
 	std::vector<std::vector<double>> W_new,	
 	std::vector<double> x, 
 	double dt);
+
+void DOperator(
+	std::vector<std::vector<double>>& DU,
+	std::vector<std::vector<double>> U,
+	double Q);
+
+void NOperator(
+	std::vector<std::vector<double>>& NU, 
+	std::vector<std::vector<double>> U,
+	double Q);
 
 void UpdateArrays(
 	std::vector<std::vector<double>>& W,
