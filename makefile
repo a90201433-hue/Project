@@ -24,6 +24,10 @@ $(OBJDIR):
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
 	$(CC) $(CFLAGS) $< -o $@
 
+pict: $(EXECUTABLE)
+	./$(EXECUTABLE)
+	python3 picture.py
+
 run: $(EXECUTABLE)
 	./$(EXECUTABLE)
 	python3 animation.py

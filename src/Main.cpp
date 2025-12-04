@@ -28,7 +28,7 @@ void GetDt(std::vector<std::vector<double>> W, std::vector<double> x, double& dt
 	double c_temp;
 
 	for (int i = fict; i < N + fict; i++){
-		c_temp = std::sqrt(gamm * W[i][2] / W[i][0]);
+		c_temp = std::sqrt(gamm * std::max(1e-7, W[i][2]) / std::max(1e-7, W[i][0]));
 		if (c_temp > c) 
 			c = c_temp;
 		if (std::abs(W[i][1]) > u)
@@ -284,14 +284,19 @@ int main() {
 	file << "x,rho,u,P,e" << std::endl;
 
 	for (int i = fict; i < N + fict; i++){
-		W_riemann = GetParamsFromChoosingWave(W_L_riemann, W_R_riemann, W_star_riemann, xc[i] - x0, t_max);
+		W_riemann = GetParamsFromChoosingWave(
+				W_L_riemann, 
+				W_R_riemann, 
+				W_star_riemann, 
+				xc[i] - x0, 
+				t_max);
 		e_riemann = W_riemann[2] / (W_riemann[0] * (gamm - 1));
-		file << xc[i]  << "," << W_riemann[0] << "," << W_riemann[1] << "," << W_riemann[2] << "," << e_riemann << std::endl;
+		file << xc[i]  << "," << W_riemann[0] 
+			       << "," << W_riemann[1] 
+			       << "," << W_riemann[2] 
+			       << "," << e_riemann << std::endl;
 	}
 	file.close();
-
-
-			
 
 
 	// For all methods
@@ -313,14 +318,64 @@ int main() {
 		printProgressTree(t, t_max);
 
 		for (std::string& method_name : methods) {
-			UpdateArrays(W_ByMethods[method_name], W_new_ByMethods[method_name], W_b_ByMethods[method_name], F_ByMethods[method_name], x, dt_common, method_name, "Euler");
+			UpdateArrays(W_ByMethods[method_name], 
+				     W_new_ByMethods[method_name], 
+				     W_b_ByMethods[method_name], 
+				     F_ByMethods[method_name], 
+				     x, 
+				     dt_common, 
+				     method_name, 
+				     "Euler");
+
 			BoundCond(W_ByMethods[method_name]);
+
+			std::vector<std::vector<double>>& current_W = W_ByMethods[method_name];
+
+			if (method_name == "MacCORMACK") {
+				std::vector<std::vector<double>> DW(current_W.size());
+				InitialZeros(DW, 3);
+				std::vector<std::vector<double>> NW(current_W.size());
+				InitialZeros(NW, 3);
+			
+				DOperator(DW, current_W, 0.2);
+				NOperator(NW, current_W, 0.2); 
+			
+				for (int j = 0; j < 3; j++) {
+					for (int i = 0; i < current_W.size(); i++) {
+
+						double original = current_W[i][j];
+						double diff_part = DW[i][j];
+						double anti_part = NW[i][j];
+						double res = original + diff_part + anti_part;
+						if (j == 0 || j == 2) {
+							if (res <= 1e-7) {
+								res = original + diff_part;
+
+								if (res <= 1e-7) {
+									res = 1e-7;
+								}
+							}
+						}
+
+						current_W[i][j] = res;
+					}
+				}
+				BoundCond(W_ByMethods[method_name]);
+			}
+
 		}
-				if (step % fo == 0){
+		if (step % fo == 0){
 			for (std::string& method_name : methods) {
-				std::string filename = "CSV_files/ActualRes/" + method_name + "/step_"  + std::to_string(step) + ".csv";
+				std::string filename = 
+					"CSV_files/ActualRes/" 
+					+ method_name + "/step_"  
+					+ std::to_string(step) 
+					+ ".csv";
 				file.open(filename);
-				WriteToCSV(W_ByMethods[method_name], xc, t, file);	
+				WriteToCSV(W_ByMethods[method_name], 
+					   xc, 
+					   t, 
+					   file);	
 				file.close();
 			}
 			
@@ -329,9 +384,15 @@ int main() {
 		if (t == t_max){
 
 			for (std::string& method_name : methods) {
-				std::string filename = "CSV_files/" + method_name + ".csv";
+				std::string filename = 
+					"CSV_files/" 
+					+ method_name 
+					+ ".csv";
 				file.open(filename);
-				WriteToCSV(W_ByMethods[method_name], xc, t, file);	
+				WriteToCSV(W_ByMethods[method_name], 
+					   xc, 
+					   t, 
+					   file);	
 				file.close();
 			}
 			break;			
