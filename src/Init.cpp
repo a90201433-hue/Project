@@ -10,7 +10,7 @@
 extern int N, fo, fict, step_max, bound_case;
 extern double L, t_max, x0, gamm, CFL;
 extern std::string x_left_bound, x_right_bound, Soda;
-extern std::vector<std::string> methods;
+extern std::vector<std::string> methods, solvers;
 
 void readConfig() {
 
@@ -41,11 +41,28 @@ void readConfig() {
 
     		// если список пустой
     		if (methods.empty()){
-			std::cout << "\nНе найдены виды схем. Используется схема Годунова." << std::endl;	
+			std::cout << "\n" << std::endl;	
         		methods.push_back("Godunov");
 		}
 	}		
 	
+	if (scheme.count("solvers") == 0) {
+		std::cout << "\nНе найдены решатели. Используется Решатель Римана.." << std::endl;
+    		solvers = {"Exact"};
+	} else {
+    		TomlValue &arr = scheme["solvers"];
+
+    		// извлекаем список
+    		for (auto &x : arr.list)
+        	solvers.push_back(x.str);
+
+    		// если список пустой
+    		if (methods.empty()){
+			std::cout << "\nНе найдены решатели. Используется Решатель Римана." << std::endl;	
+        		solvers.push_back("Exact");
+		}
+	}
+
 
 	N = scheme["N_x"].number;
 	L = scheme["L_x"].number;

@@ -32,20 +32,23 @@ void Euler(
 	std::vector<std::vector<double>>& W_new, 
 	std::vector<std::vector<double>> W, 
     	std::string method, 
+	std::string solver,
 	int init_idx, 
 	int end_idx, 
-	std::vector<double> x, 
-	double dt
+	std::vector<double> x, double dt
 );
+
 void RK3(
 	std::vector<std::vector<double>>& W_new, 
 	std::vector<std::vector<double>> W, 
 	std::string method,
+	std::string solver,
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
 	double dt
 );
+
 void FindSlopes(std::vector<std::vector<double>> W, std::vector<std::vector<double>>& Slope);
 
 void ReconstructValues(
@@ -56,19 +59,32 @@ void ReconstructValues(
 	RecFunc function
 );
 
+void SolveBoundProblem(std::vector<std::vector<double>> W, 
+		       std::vector<std::vector<double>>& W_b,
+		       std::vector<std::vector<double>>& F,
+		       std::string solver);
+
+void SolveBoundProblem(std::vector<std::vector<double>> W_L, 
+		       std::vector<std::vector<double>> W_R,
+		       std::vector<std::vector<double>>& W_b,
+		       std::vector<std::vector<double>>& F,
+		       std::string solver);
 
 void FindBoundValues(
 	std::vector<std::vector<double>> W, 
-	std::vector<std::vector<double>>& W_b, 
+	std::vector<std::vector<double>>& W_b,
+	std::vector<std::vector<double>>& F,
 	std::vector<double> x, 
 	double dt, 
-	std::string method
+	std::string method,
+	std::string solver
 );
 
 void GetFluxes(
 	std::vector<std::vector<double>> W,
 	std::vector<std::vector<double>>& F,
 	std::string method,
+	std::string solver,
 	std::vector<double> x,
 	double dt
 );
@@ -77,7 +93,8 @@ void MacCORMACK(
 	std::vector<std::vector<double>>& W,
 	std::vector<std::vector<double>> W_new,	
 	std::vector<double> x, 
-	double dt);
+	double dt, 
+	std::string solver);
 
 void DOperator(
 	std::vector<std::vector<double>>& DU,
@@ -94,10 +111,9 @@ void UpdateArrays(
 	std::vector<std::vector<double>> W_new,
 	std::vector<std::vector<double>> W_b,
 	std::vector<std::vector<double>> F,
-	std::vector<double> x, 
-	double dt, 
 	std::string method,
-	std::string time_method
-);
+	std::string solver,
+	std::string time_method,
+	std::vector<double> x,double dt);
 
 #endif

@@ -19,7 +19,7 @@ int N, fo, step_max, bound_case;
 int fict = 3;
 double L, t_max, x0, gamm, CFL;
 std::string x_left_bound, x_right_bound, Soda;
-std::vector<std::string> methods;
+std::vector<std::string> methods, solvers;
 
 //namespace fs = std::filesystem;
 
@@ -198,18 +198,23 @@ void printProgressTree(double t, double t_max) {
     std::cout.flush();
 }
 
-void InitMaps(const std::vector<std::string>& methods, DataArray W_0,
-		std::map<std::string, DataArray>& W_map,
-    		std::map<std::string, DataArray>& W_new_map,
-    		std::map<std::string, DataArray>& W_b_map,
-    		std::map<std::string, DataArray>& F_map) {
+void InitMaps(std::vector<std::string> methods, std::vector<std::string> solvers, DataArray W_0,
+	      std::map<std::string, std::string>& Solver_Map,
+	      std::map<std::string, DataArray>& W_map,
+      	      std::map<std::string, DataArray>& W_new_map,
+	      std::map<std::string, DataArray>& W_b_map,
+	      std::map<std::string, DataArray>& F_map) {
 
 	const size_t Central_num = N + 2 * fict - 1;
     	const size_t Bound_num = N + 2 * fict;
-
+	
+	size_t i = 0;
 	for (const std::string& method_name : methods) {
         
         	std::cout << "Инициализация массивов для метода: " << method_name << std::endl;
+		
+		Solver_Map[method_name] = solvers[i];
+		i++;
 
 		W_map[method_name] = W_0;
         
@@ -225,6 +230,7 @@ void InitMaps(const std::vector<std::string>& methods, DataArray W_0,
         	// --- 4. F ---
         	F_map[method_name].resize(Bound_num);
         	InitialZeros(F_map[method_name], 2);
+		
     	}	
 	
 
@@ -256,8 +262,9 @@ int main() {
 	std::map<std::string, DataArray> W_new_ByMethods;
 	std::map<std::string, DataArray> W_b_ByMethods;
 	std::map<std::string, DataArray> F_ByMethods;
-	
-	InitMaps(methods, W_0, W_ByMethods, W_new_ByMethods, W_b_ByMethods, F_ByMethods);
+	std::map<std::string, std::string> Solver_ByMethods;	
+	InitMaps(methods, solvers, W_0, Solver_ByMethods, 
+		 W_ByMethods, W_new_ByMethods, W_b_ByMethods, F_ByMethods);
 
 	
 	
@@ -322,10 +329,8 @@ int main() {
 				     W_new_ByMethods[method_name], 
 				     W_b_ByMethods[method_name], 
 				     F_ByMethods[method_name], 
-				     x, 
-				     dt_common, 
-				     method_name, 
-				     "Euler");
+				     method_name, Solver_ByMethods[method_name], 
+				     "Euler", x, dt_common);
 
 			BoundCond(W_ByMethods[method_name]);
 
