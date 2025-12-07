@@ -1,12 +1,12 @@
 # Параметры физической задачи
 [simulation]
 gamma = 1.4
-Soda_test = "test3"
+Soda_test = "test4"
 
 # Параметры схемы
 [scheme]
 methods = ["Godunov"]
-solvers = ["Roe"]
+solvers = ["Osher"]
 N_x = 250
 L_x = 1.0
 

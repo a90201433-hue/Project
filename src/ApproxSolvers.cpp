@@ -311,7 +311,7 @@ void StarValues(std::vector<double> W_L,
   double c_L = std::sqrt(gamm * P_L / W_L[0]);
   double c_R = std::sqrt(gamm * P_R / W_R[0]);
   
-  std::vector<double> W_star;
+    std::vector<double> W_star(2, 0.0);
     NewtonForPressure(W_L, W_R, W_star, 1e-6);
     
     P_13 = W_star[0];
@@ -394,19 +394,19 @@ std::vector<double> Osher(std::vector<double> W_L,
                 c_56,
                 P_56);
                 
-    std::vector<double> F_L;
+    std::vector<double> F_L(3, 0.0);
     FindFfromW(F_L, {rho_L, u_L, P_L});            
-    std::vector<double> F_R;
+    std::vector<double> F_R(3, 0.0);
     FindFfromW(F_R, {rho_R, u_R, P_R});
     
-    std::vector<double> F_13;
+    std::vector<double> F_13(3, 0.0);
     FindFfromW(F_13, {rho_13, u_13, P_13});
-    std::vector<double> F_23;
+    std::vector<double> F_23(3, 0.0);
     FindFfromW(F_23, {rho_23, u_23, P_23});
     
-    std::vector<double> F_16;
+    std::vector<double> F_16(3, 0.0);
     FindFfromW(F_16, {rho_16, u_16, P_16});
-    std::vector<double> F_56;
+    std::vector<double> F_56(3, 0.0);
     FindFfromW(F_56, {rho_56, u_56, P_56});
     
     std::vector<double> F_osher = F_R; 
