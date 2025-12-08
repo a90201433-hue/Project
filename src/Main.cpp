@@ -12,6 +12,7 @@
 #include "lib/RiemannSolver.h"
 #include "lib/Acoustic.h"
 #include "lib/GeneralFunctions.h"
+#include "lib/Analis.h"
 
 using DataArray = std::vector<std::vector<double>>;
 
@@ -273,6 +274,15 @@ int main() {
 	std::vector<double> W_star_riemann = {0, 0};
 	std::vector<double> W_riemann = {0, 0, 0};
 	double e_riemann;
+
+	std::map<std::string, std::ofstream> AnalysisFiles;
+    	for (const auto& method : methods) {
+        	std::string filename = "CSV_files/Analis_" + method + ".csv";
+        	AnalysisFiles[method].open(filename);
+        	// Пишем заголовок CSV
+        	AnalysisFiles[method] << "time,Ratio_rho,Ratio_v,Ratio_P" << std::endl;
+    	}
+
 /*
 	std::vector<double> W_star_ac = {0, 0};
 	std::vector<double> W_ac = {0, 0, 0};
@@ -382,9 +392,14 @@ int main() {
 					   t, 
 					   file);	
 				file.close();
-			}
-			
-			
+			 	SaveAnalysisData(AnalysisFiles[method_name], 
+                    				t, 
+ 						W_ByMethods[method_name], 
+						xc, 
+						W_L_riemann, W_R_riemann, W_star_riemann, x0,
+						GetParamsFromChoosingWave,
+						RatioL);
+			}	
 		}		
 		if (t == t_max){
 
@@ -399,11 +414,22 @@ int main() {
 					   t, 
 					   file);	
 				file.close();
+			 	SaveAnalysisData(AnalysisFiles[method_name], 
+                    				t, 
+ 						W_ByMethods[method_name], 
+						xc, 
+						W_L_riemann, W_R_riemann, W_star_riemann, x0,
+						GetParamsFromChoosingWave,
+						RatioL);			
 			}
 			break;			
 		}
 		step++;
 	}
+
+	for (auto& pair : AnalysisFiles) {
+        	pair.second.close();
+   	 }
 
 	std::cout << std::endl << "Завершено успешно." << std::endl;	
 	return 0;

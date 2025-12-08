@@ -177,3 +177,41 @@ void WriteToCSV(std::vector<std::vector<double>> W, std::vector<double> xc, doub
 			<< "," << e << std::endl;
 	}
 }
+
+// Функция для подсчета ошибок и записи в CSV
+void SaveAnalysisData(
+    std::ofstream& file,
+    double t,
+    const std::vector<std::vector<double>>& W_num,
+    const std::vector<double>& xc,                 
+    // Параметры для точного решения:
+    const std::vector<double>& W_L,
+    const std::vector<double>& W_R,
+    const std::vector<double>& W_star,
+    double x0,
+    std::vector<double>(*TrueSolveF)(std::vector<double>, std::vector<double>, std::vector<double>, double, double),
+    double(*AnalisF)(std::vector<double>)
+
+) {
+   
+    std::vector<double> error_diff_rho(N + 2 * fict), error_diff_v(N + 2 * fict), error_diff_P(N + 2 * fict);
+    
+
+    for (int i = fict; i < N + fict; i++) {
+        // 1.точное решение
+        std::vector<double> W_exact = TrueSolveF(W_L, W_R, W_star, xc[i] - x0, t);
+        
+        // 2. разница
+        error_diff_rho[i] = W_num[i][0] - W_exact[0];
+	error_diff_v[i] = W_num[i][1] - W_exact[1];
+       	error_diff_P[i] = W_num[i][2] - W_exact[1];	
+    }
+
+   
+    double val_rho = AnalisF(error_diff_rho);
+    double val_v = AnalisF(error_diff_v);
+    double val_P = AnalisF(error_diff_P);
+
+   
+    file << t << "," << val_rho << "," << val_v << "," << val_P << std::endl;
+}
