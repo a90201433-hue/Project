@@ -114,6 +114,6 @@ void UpdateArrays(
 	std::string method,
 	std::string solver,
 	std::string time_method,
-	std::vector<double> x,double dt);
+	std::vector<double> x,double dt, double mu0);
 
 #endif

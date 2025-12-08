@@ -633,7 +633,8 @@ void UpdateArrays(
 	std::string method,
 	std::string solver,
 	std::string time_method,
-	std::vector<double> x,double dt) {
+	std::vector<double> x,double dt, double mu0) {
+
 	std::vector<std::vector<double>> W_L(N + 2 * fict);
 	std::vector<std::vector<double>> W_R(N + 2 * fict);
 	
@@ -652,4 +653,16 @@ void UpdateArrays(
 	for (int i = fict; i < N + fict - 1; i++) {
 		W[i] = W_new[i];
 	}
+
+	for (int i = fict; i < N + fict - 1; i++) {
+                double dx = x[i + 1] - x[i];
+                double du = W[i + 1][1] - W[i][1];
+
+                if (du / dx < 0.0) {
+                        W[i][2] = W[i][2] + mu0 * W[i][0] * std::pow(du, 2);
+                } else {
+                        W[i][2] = W[i][2];
+                }
+	}
+
 }

@@ -1,13 +1,13 @@
 # Параметры физической задачи
 [simulation]
 gamma = 1.4
-Soda_test = "test2"
+Soda_test = "test4"
 
 # Параметры схемы
 [scheme]
-methods = ["Kolgan"]
-solvers = ["Osher"]
-N_x = 500
+methods = ["MacCORMACK"]
+solvers = ["HLL"]
+N_x = 100
 L_x = 1.0
 
 # Граничные условия. free - свободная граница; wall - непроницаемая стена; periodic - периодические
@@ -19,3 +19,4 @@ CFL = 0.5
 [recording]
 fo = 10
 step_max = 1000
+

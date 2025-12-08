@@ -340,7 +340,7 @@ int main() {
 				     W_b_ByMethods[method_name], 
 				     F_ByMethods[method_name], 
 				     method_name, Solver_ByMethods[method_name], 
-				     "Euler", x, dt_common);
+				     "Euler", x, dt_common, 2);
 
 			BoundCond(W_ByMethods[method_name]);
 
