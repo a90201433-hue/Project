@@ -1,19 +1,19 @@
 # Параметры физической задачи
 [simulation]
 gamma = 1.4
-Soda_test = "test4"
+Soda_test = "test2"
 
 # Параметры схемы
 [scheme]
 methods = ["Godunov"]
 solvers = ["Osher"]
-N_x = 250
+N_x = 500
 L_x = 1.0
 
 # Граничные условия. free - свободная граница; wall - непроницаемая стена; periodic - периодические
 x_right_bound = "free"
 x_left_bound = "free"
-CFL = 0.25
+CFL = 0.5
 
 # Параметры записи
 [recording]
