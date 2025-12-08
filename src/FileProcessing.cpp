@@ -191,8 +191,8 @@ void SaveAnalysisData(
     double x0,
     std::vector<double>(*TrueSolveF)(std::vector<double>, std::vector<double>, std::vector<double>, double, double),
     double(*AnalisF)(std::vector<double>)
-
-) {
+)
+ {
    
     std::vector<double> error_diff_rho(N + 2 * fict), error_diff_v(N + 2 * fict), error_diff_P(N + 2 * fict);
     

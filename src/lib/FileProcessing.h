@@ -11,4 +11,18 @@ void ClearDirectoryContents(const std::string& target_dir_path);
 
 void CreateDir(const std::string& root_folder_path, const std::string& new_folder_name);
 
+void SaveAnalysisData(
+    std::ofstream& file,
+    double t,
+    const std::vector<std::vector<double>>& W_num,
+    const std::vector<double>& xc,                 
+    // Параметры для точного решения:
+    const std::vector<double>& W_L,
+    const std::vector<double>& W_R,
+    const std::vector<double>& W_star,
+    double x0,
+    std::vector<double>(*TrueSolveF)(std::vector<double>, std::vector<double>, std::vector<double>, double, double),
+    double(*AnalisF)(std::vector<double>)
+);
+
 #endif

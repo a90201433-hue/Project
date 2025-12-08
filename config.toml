@@ -5,7 +5,7 @@ Soda_test = "test2"
 
 # Параметры схемы
 [scheme]
-methods = ["Godunov"]
+methods = ["Kolgan"]
 solvers = ["Osher"]
 N_x = 500
 L_x = 1.0
