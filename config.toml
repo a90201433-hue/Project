@@ -5,7 +5,7 @@ Soda_test = "test4"
 
 # Параметры схемы
 [scheme]
-methods = ["MacCORMACK"]
+methods = ["Kolgan"]
 solvers = ["HLL"]
 N_x = 100
 L_x = 1.0
