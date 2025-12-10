@@ -32,7 +32,9 @@ void Euler(
 	std::vector<std::vector<double>>& W_new, 
 	std::vector<std::vector<double>> W, 
     	std::string method, 
+		std::string high_order_method,
 	std::string solver,
+	std::string TVD_solver,
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, double dt
@@ -42,7 +44,9 @@ void RK3(
 	std::vector<std::vector<double>>& W_new, 
 	std::vector<std::vector<double>> W, 
 	std::string method,
+	
 	std::string solver,
+	
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
@@ -93,6 +97,7 @@ void MacCORMACK(
 	std::vector<std::vector<double>>& W,
 	std::vector<std::vector<double>> W_new,	
 	std::vector<double> x, 
+	bool Viscous_flag, double mu0,
 	double dt, 
 	std::string solver);
 
@@ -112,8 +117,11 @@ void UpdateArrays(
 	std::vector<std::vector<double>> W_b,
 	std::vector<std::vector<double>> F,
 	std::string method,
+	std::string high_order_method,
 	std::string solver,
+	std::string TVD_solver,
+	bool Viscous_flag, double mu0,
 	std::string time_method,
-	std::vector<double> x,double dt, double mu0);
+	std::vector<double> x, double dt);
 
 #endif

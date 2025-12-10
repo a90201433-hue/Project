@@ -7,10 +7,12 @@
 #include "lib/ParseTOML.h"
 
 
-extern int N, fo, fict, step_max, bound_case;
-extern double L, t_max, x0, gamm, CFL;
-extern std::string x_left_bound, x_right_bound, Soda;
+extern int N, fo, step_max, bound_case;
+extern double L, t_max, x0, gamm, CFL, Q, mu0;
+extern std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver;
 extern std::vector<std::string> methods, solvers;
+extern bool Diffusion_flag, Viscous_flag, TVD_flag;
+extern int fict;
 
 void readConfig() {
 
@@ -21,13 +23,18 @@ void readConfig() {
         	return;
     	}
 	
-	
 	gamm = toml.root["simulation"].table["gamma"].number;
 	Soda = toml.root["simulation"].table["Soda_test"].str;
 
 	auto& scheme = toml.root["scheme"].table;
 	
-	//auto& method_names = scheme["methods"];
+	TVD_flag = (scheme["TVD"].str == "On") ? true : false;
+	if (TVD_flag) {
+		high_order_method = scheme["High_order_method"].str;
+		TVD_solver = scheme["TVD_solver"].str;
+		methods.push_back("TVD");
+		solvers.push_back(TVD_solver);
+	}
 
 	if (scheme.count("methods") == 0) {
 		std::cout << "\nНе найдены виды схем. Используется схема Годунова." << std::endl;
@@ -63,12 +70,19 @@ void readConfig() {
 		}
 	}
 
+	Diffusion_flag = (scheme["Diffusion"].str == "On") ? true : false;
+	Q = (Diffusion_flag == true) ? scheme["Q"].number : 0.0;
+
+	Viscous_flag = (scheme["Viscous"].str == "On") ? true : false;
+	mu0 = (Viscous_flag == true) ? scheme["mu"].number : 0.0;
+	
 
 	N = scheme["N_x"].number;
 	L = scheme["L_x"].number;
 	CFL = scheme["CFL"].number;
 	x_left_bound = scheme["x_left_bound"].str;
 	x_right_bound = scheme["x_right_bound"].str;
+
 
 	fo = toml.root["recording"].table["fo"].number;
 	step_max = toml.root["recording"].table["step_max"].number;

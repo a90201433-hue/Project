@@ -5,18 +5,28 @@ Soda_test = "test4"
 
 # Параметры схемы
 [scheme]
-methods = ["MacCORMACK"]
-solvers = ["HLL"]
-N_x = 100
+methods = ["Godunov"]
+solvers = ["Exact"]
+
+Diffusion = "Off"
+Q = 0.2
+
+Viscous = "On"
+mu = 1.0
+
+TVD = "Off"
+High_order_method = "ENO"
+TVD_solver = "HLL"
+
+N_x = 200
 L_x = 1.0
 
 # Граничные условия. free - свободная граница; wall - непроницаемая стена; periodic - периодические
 x_right_bound = "free"
 x_left_bound = "free"
-CFL = 0.5
+CFL = 0.125
 
 # Параметры записи
 [recording]
 fo = 10
 step_max = 1000
-

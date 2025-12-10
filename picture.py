@@ -42,10 +42,10 @@ def read_config_methods(config_path='config.toml'):
     except FileNotFoundError:
         print(f"Ошибка: Файл {config_path} не найден.")
         # Запасной список
-        return ['Godunov']
+        return ['TVD']
     
     # Если список в конфиге пуст, используем запасной
-    return methods_list if methods_list else ['Godunov']
+    return methods_list if methods_list else ['TVD']
 
 
 def read_data_file(name):

@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <math.h>
 #include <map>
-//#include <filesystem>
 #include "lib/FileProcessing.h"
 #include "lib/Init.h"
 #include "lib/BoundCond.h"
@@ -17,12 +16,12 @@
 using DataArray = std::vector<std::vector<double>>;
 
 int N, fo, step_max, bound_case;
-int fict = 3;
-double L, t_max, x0, gamm, CFL;
-std::string x_left_bound, x_right_bound, Soda;
+double L, t_max, x0, gamm, CFL, Q, mu0;
+std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver;
 std::vector<std::string> methods, solvers;
+bool Diffusion_flag, Viscous_flag, TVD_flag;
 
-//namespace fs = std::filesystem;
+int fict = 3;
 
 void GetDt(std::vector<std::vector<double>> W, std::vector<double> x, double& dt){
 	double c = 0, dx = L, u = 0;
@@ -39,7 +38,7 @@ void GetDt(std::vector<std::vector<double>> W, std::vector<double> x, double& dt
 	}
 
 	dt = CFL * dx/(c + u);
-	//std::cout << "dt= " << dt << std::endl;
+	return;
 }
 
 
@@ -54,16 +53,6 @@ void GetCommonDt(std::map<std::string, DataArray> W, std::vector<std::string> me
 
 	dt_common = *std::min_element(times.begin(), times.end());
 	return;
-	//double dt_G, dt_GK, dt_GKR, dt_ENO, dt_WENO;
-/*
-	GetDt(W_G, x, dt_G);
-	GetDt(W_GK, x, dt_GK);
-	GetDt(W_GKR, x, dt_GKR);
-	GetDt(W_ENO, x, dt_ENO);
-	GetDt(W_WENO, x, dt_WENO);
-*/
-	//dt_common = std::min(std::min(std::min(std::min(dt_G, dt_GK), dt_GKR), dt_ENO), dt_WENO);
-	//std::cout << "dt_common= " << dt_common << std::endl;
 
 }
 
@@ -200,11 +189,11 @@ void printProgressTree(double t, double t_max) {
 }
 
 void InitMaps(std::vector<std::string> methods, std::vector<std::string> solvers, DataArray W_0,
-	      std::map<std::string, std::string>& Solver_Map,
-	      std::map<std::string, DataArray>& W_map,
+	      	  std::map<std::string, std::string>& Solver_Map,
+	      	  std::map<std::string, DataArray>& W_map,
       	      std::map<std::string, DataArray>& W_new_map,
-	      std::map<std::string, DataArray>& W_b_map,
-	      std::map<std::string, DataArray>& F_map) {
+	      	  std::map<std::string, DataArray>& W_b_map,
+	      	  std::map<std::string, DataArray>& F_map) {
 
 	const size_t Central_num = N + 2 * fict - 1;
     	const size_t Bound_num = N + 2 * fict;
@@ -232,9 +221,7 @@ void InitMaps(std::vector<std::string> methods, std::vector<std::string> solvers
         	F_map[method_name].resize(Bound_num);
         	InitialZeros(F_map[method_name], 2);
 		
-    	}	
-	
-
+    }	
 }
 
 int main() {
@@ -242,7 +229,7 @@ int main() {
 	ClearDirectoryContents("CSV_files/ActualRes");
 	
 	readConfig();
-	
+	std::cout << TVD_solver << std::endl;
 	double dx = L / (N - 1);
 	std::vector<double> xc(N + 2 * fict - 1);
 	std::vector<double> x(N + 2 * fict);	
@@ -335,25 +322,29 @@ int main() {
 		printProgressTree(t, t_max);
 
 		for (std::string& method_name : methods) {
+			
 			UpdateArrays(W_ByMethods[method_name], 
-				     W_new_ByMethods[method_name], 
-				     W_b_ByMethods[method_name], 
-				     F_ByMethods[method_name], 
-				     method_name, Solver_ByMethods[method_name], 
-				     "Euler", x, dt_common, 2);
-
+				     	 W_new_ByMethods[method_name], 
+				     	 W_b_ByMethods[method_name], 
+				     	 F_ByMethods[method_name], 
+				     	 method_name, 
+						 high_order_method,
+						 Solver_ByMethods[method_name], 
+						 TVD_solver,
+						 Viscous_flag, mu0,
+				     	 "Euler", x, dt_common);
+				
 			BoundCond(W_ByMethods[method_name]);
 
-			std::vector<std::vector<double>>& current_W = W_ByMethods[method_name];
-
-			if (method_name == "MacCORMACK") {
+			if (Diffusion_flag == true) {
+				std::vector<std::vector<double>>& current_W = W_ByMethods[method_name];
 				std::vector<std::vector<double>> DW(current_W.size());
 				InitialZeros(DW, 3);
 				std::vector<std::vector<double>> NW(current_W.size());
 				InitialZeros(NW, 3);
 			
-				DOperator(DW, current_W, 0.2);
-				NOperator(NW, current_W, 0.2); 
+				DOperator(DW, current_W, Q);
+				NOperator(NW, current_W, Q); 
 			
 				for (int j = 0; j < 3; j++) {
 					for (int i = 0; i < current_W.size(); i++) {

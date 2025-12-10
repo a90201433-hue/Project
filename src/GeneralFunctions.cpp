@@ -10,6 +10,7 @@
 #include "lib/GeneralFunctions.h"
 #include "lib/ENO.h"
 #include "lib/WENO.h"
+#include "lib/Limiters.h"
 
 extern double gamm, L;
 extern int N, fict;
@@ -60,8 +61,10 @@ void LRStreams(
 void Euler(
 	DataArray& W_new, 
 	DataArray W, 
-    	std::string method, 
+    std::string method, 
+	std::string high_order_method,
 	std::string solver,
+	std::string TVD_solver,
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
@@ -70,7 +73,26 @@ void Euler(
 	DataArray F(N + 2 * fict);
 	InitialZeros(F, 3);
     
-	GetFluxes(W, F, method, solver, x, dt);
+	if (method == "TVD") {
+		DataArray F_low(N + 2 * fict, {0.0, 0.0, 0.0});
+		GetFluxes(W, F_low, "Godunov", TVD_solver, x, dt);
+
+		DataArray F_high(N + 2 * fict, {0.0, 0.0, 0.0});
+		GetFluxes(W, F_high, high_order_method, TVD_solver, x, dt);
+
+		std::vector<double> r_array(3, 0.0);
+
+		for (int i = fict; i < N + fict; i++) {
+			r_array = FindR(W[i - 1], W[i], W[i+1]);
+			for (int j = 0; j < 3; j++) {
+				F[i][j] = F_low[i][j] - CHARM(r_array[j])*(F_low[i][j] - F_high[i][j]);
+			}
+		}
+	}
+	else {
+		GetFluxes(W, F, method, solver, x, dt);
+	}
+
 	for (int i = init_idx; i < end_idx; i++) {
 		double dx = x[i + 1] - x[i];
 
@@ -198,7 +220,8 @@ void TimePredictor(
 }
 
 
-void FindSlopes(std::vector<std::vector<double>> W, std::vector<std::vector<double>>& Slope){
+void FindSlopes(std::vector<std::vector<double>> W, 
+				std::vector<std::vector<double>>& Slope) {
 	InitialZeros(Slope, 3);
 	for (int j = 0; j < 3; j++) {
 		for (int i = 1; i < N + 2 * fict - 1; i++) {
@@ -275,14 +298,13 @@ void SolveBoundProblem(std::vector<std::vector<double>> W,
 		return;
 	}
 
-
 }
 
 void SolveBoundProblem(std::vector<std::vector<double>> W_L, 
-		       std::vector<std::vector<double>> W_R,
-		       std::vector<std::vector<double>>& W_b,
-		       std::vector<std::vector<double>>& F,
-		       std::string solver){
+		       		   std::vector<std::vector<double>> W_R,
+		       		   std::vector<std::vector<double>>& W_b,
+		       		   std::vector<std::vector<double>>& F,
+		       		   std::string solver){
 	
 	if (solver == "Exact") {
 
@@ -334,84 +356,51 @@ void SolveBoundProblem(std::vector<std::vector<double>> W_L,
 }
 
 
-void FindBoundValues(
-	std::vector<std::vector<double>> W, 
-	std::vector<std::vector<double>>& W_b,
-	std::vector<std::vector<double>>& F,
-	std::vector<double> x, 
-	double dt, 
-	std::string method,
-	std::string solver
-){
-	std::vector<std::vector<double>> Slope(N + 2 * fict, std::vector<double> (3, 0.0));
-	//InitialZeros(Slope, 3);
-	std::vector<std::vector<double>> W_L(N + 2 * fict);
-	InitialZeros(W_L, 3);
-	std::vector<std::vector<double>> W_R(N + 2 * fict);
-	InitialZeros(W_R, 3);
-	std::vector<std::vector<double>> U(N + 2 * fict - 1);
-	InitialZeros(U, 3);
-	std::vector<std::vector<double>> U_L(N + 2 * fict);
-	InitialZeros(U_L, 3);
-	std::vector<std::vector<double>> U_R(N + 2 * fict);
-	InitialZeros(U_R, 3);
-	std::vector<std::vector<double>> W_tilde(N + 2 * fict - 1);
-	InitialZeros(W_tilde, 3);
-	std::vector<std::vector<double>> W_half(N + 2 * fict - 1);
-	InitialZeros(W_half, 3);
-	std::vector<std::vector<double>> U_half(N + 2 * fict - 1);
-	InitialZeros(U_half, 3);
+void FindBoundValues(std::vector<std::vector<double>> W, 
+					 std::vector<std::vector<double>>& W_b,
+					 std::vector<std::vector<double>>& F,
+					 std::vector<double> x, 
+					 double dt, 
+					 std::string method,
+					 std::string solver) {
 
-	if (method == "Godunov"){
-		/*
-		// 1. Ищем звездные значения
-		for (int i = fict; i < N + fict; i++) {
-			NewtonForPressure(W[i - 1], W[i], W_b[i], 1e-6);
-		}
-		// 2. Ищем значение на границе из задаче о распаде разрыва
-		for (int i = fict; i < N + fict; i++) {
-			F[i] = Osher(W[i - 1], W[i]);
-			//W_b[i] = GetParamsFromChoosingWave(W[i - 1], W[i], W_b[i], 0.0, 1.0);
-		}*/
+	std::vector<std::vector<double>> Slope(N + 2 * fict, std::vector<double> (3, 0.0));
+	std::vector<std::vector<double>> W_L(N + 2 * fict, std::vector<double> (3, 0.0));
+	std::vector<std::vector<double>> W_R(N + 2 * fict, std::vector<double> (3, 0.0));
+	std::vector<std::vector<double>> U(N + 2 * fict - 1, std::vector<double> (3, 0.0));
+	std::vector<std::vector<double>> U_L(N + 2 * fict, std::vector<double> (3, 0.0));
+	std::vector<std::vector<double>> U_R(N + 2 * fict, std::vector<double> (3, 0.0));
+	std::vector<std::vector<double>> W_tilde(N + 2 * fict - 1, std::vector<double> (3, 0.0));
+	std::vector<std::vector<double>> W_half(N + 2 * fict - 1, std::vector<double> (3, 0.0));
+	std::vector<std::vector<double>> U_half(N + 2 * fict - 1, std::vector<double> (3, 0.0));
+	
+
+	if (method == "Godunov") {
 		SolveBoundProblem(W, W_b, F, solver);
 		return;
 	}
 
-	else if (method == "Kolgan"){
+	else if (method == "Kolgan") {
 	
 		FindSlopes(W, Slope);	
 		ReconstructValues(W, Slope, W_L, W_R, &minmod);
-/*
-		for (int i = fict; i < N + fict; i++) {
-			NewtonForPressure(W_L[i], W_R[i], W_b[i], 1e-6);
-		}
-		for (int i = fict; i < N + fict; i++) {
-			//W_b[i] = HLL(W_L[i])
-			W_b[i] = GetParamsFromChoosingWave(W_L[i], W_R[i], W_b[i], 0.0, 1.0);
-		}*/
 		SolveBoundProblem(W_L, W_R, W_b, F, solver);
 		return;		
 	}
 	
-	else if (method == "Kolgan2"){
+	else if (method == "Kolgan2") {
 
 		ConvertWtoU(W, U);
 		FindSlopes(U, Slope);
 		ReconstructValues(U, Slope, U_L, U_R, &minmod);
 		ConvertUtoW(W_L, U_L);
 		ConvertUtoW(W_R, U_R);
-/*
-		for (int i = fict; i < N + fict; i++) {
-			NewtonForPressure(W_L[i], W_R[i], W_b[i], 1e-6);	
-		}
-		for (int i = fict; i < N + fict; i++) {
-			W_b[i] = GetParamsFromChoosingWave(W_L[i], W_R[i], W_b[i], 0.0, 1.0);	
-		}*/
 		SolveBoundProblem(W_L, W_R, W_b, F, solver);
+
 		return;		
 	}
 
-	else if (method == "Rodionov"){
+	else if (method == "Rodionov") {
 		
 		FindSlopes(W, Slope);
 		ReconstructValues(W, Slope, W_L, W_R, &minmod);
@@ -425,18 +414,11 @@ void FindBoundValues(
 		}
 		
 		ReconstructValues(W_half, Slope, W_L, W_R, &minmod);
-		/*
-		for (int i = fict; i < N + fict; i++) {
-			NewtonForPressure(W_L[i], W_R[i], W_b[i], 1e-6);
-		}
-		for (int i = fict; i < N + fict; i++) {
-			W_b[i] = GetParamsFromChoosingWave(W_L[i], W_R[i], W_b[i], 0.0, 1.0);
-		}*/
 		SolveBoundProblem(W_L, W_R, W_b, F, solver);
 		return;	
 	}
 	
-	else if (method == "Rodionov2"){
+	else if (method == "Rodionov2") {
 		
 		ConvertWtoU(W, U);
 		FindSlopes(U, Slope);	
@@ -456,13 +438,6 @@ void FindBoundValues(
 		ReconstructValues(U_half, Slope, U_L, U_R, &minmod);
 		ConvertUtoW(W_L, U_L);
 		ConvertUtoW(W_R, U_R);
-/*
-		for (int i = fict; i < N + fict; i++) {
-			NewtonForPressure(W_L[i], W_R[i], W_b[i], 1e-6);
-		}
-		for (int i = fict; i < N + fict; i++) {
-			W_b[i] = GetParamsFromChoosingWave(W_L[i], W_R[i], W_b[i], 0.0, 1.0);
-		}*/
 		SolveBoundProblem(W_L, W_R, W_b, F, solver);
 		return;	
 	}
@@ -471,15 +446,6 @@ void FindBoundValues(
 		
 		FindSlopes(W, Slope);
 		ENO(W, Slope, W_L, W_R);
-		
-		/*
-		for (int i = fict; i < N + fict; i++) {
-			NewtonForPressure(W_L[i], W_R[i], W_b[i], 1e-6);	
-		}
-		for (int i = fict; i < N + fict; i++) {
-			
-			W_b[i] = GetParamsFromChoosingWave(W_L[i], W_R[i], W_b[i], 0.0, 1.0);	
-		}*/
 		SolveBoundProblem(W_L, W_R, W_b, F, solver);
 		return;
 	}
@@ -509,6 +475,7 @@ void MacCORMACK(
 	DataArray& W,
 	DataArray W_new,	
 	std::vector<double> x, 
+	bool Viscous_flag, double mu0,
 	double dt,
 	std::string solver){
 	
@@ -564,6 +531,8 @@ void MacCORMACK(
 	for (int i = fict; i < N + fict - 1; i++) {
 		W[i] = W_new[i];
 	}
+
+	
 
 }
 
@@ -631,29 +600,23 @@ void UpdateArrays(
 	std::vector<std::vector<double>> W_b,
 	std::vector<std::vector<double>> F,
 	std::string method,
+	std::string high_order_method,
 	std::string solver,
+	std::string TVD_solver,
+	bool Viscous_flag, double mu0,
 	std::string time_method,
-	std::vector<double> x,double dt, double mu0) {
+	std::vector<double> x,double dt) {
 
 	std::vector<std::vector<double>> W_L(N + 2 * fict);
 	std::vector<std::vector<double>> W_R(N + 2 * fict);
+
 	
 
 	if (method == "MacCORMACK") {
-		MacCORMACK(W, W_new, x, dt, solver);
+		MacCORMACK(W, W_new, x, Viscous_flag, mu0, dt, solver);
 		return;
 	}
 	
-	if (time_method == "RK3") {
-		RK3(W_new, W, method, solver, fict, N + fict - 1, x, dt);
-	} else {
-		Euler(W_new, W, method, solver, fict, N + fict - 1, x, dt);
-	}	
-
-	for (int i = fict; i < N + fict - 1; i++) {
-		W[i] = W_new[i];
-	}
-
 	for (int i = fict; i < N + fict - 1; i++) {
                 double dx = x[i + 1] - x[i];
                 double du = W[i + 1][1] - W[i][1];
@@ -665,4 +628,13 @@ void UpdateArrays(
                 }
 	}
 
+	if (time_method == "RK3") {
+		RK3(W_new, W, method, solver, fict, N + fict - 1, x, dt);
+	} else {
+		Euler(W_new, W, method, high_order_method, solver, TVD_solver, fict, N + fict - 1, x, dt);
+	}	
+
+	for (int i = fict; i < N + fict - 1; i++) {
+		W[i] = W_new[i];
+	}
 }
