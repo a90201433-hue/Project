@@ -1,2 +1,13 @@
 CSV_files/*
 
+# build artifacts
+build/
+obj/
+
+# compiled binaries
+*.o
+*.so
+*.a
+*.exe
+*.out
+*.dll
