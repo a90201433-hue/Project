@@ -18,6 +18,7 @@ extern int N, fict;
 using DataArray = std::vector<std::vector<double>>;
 
 typedef double (*RecFunc)(double a, double b);
+
 double minmod(double a, double b) {
 	if (a * b <= 0) {
 		return 0.0;
@@ -30,6 +31,7 @@ double minmod(double a, double b) {
 	}
 	return 0.0;
 }
+
 
 void Streams(
 	DataArray W,
@@ -65,6 +67,7 @@ void Euler(
 	std::string high_order_method,
 	std::string solver,
 	std::string TVD_solver,
+	LimiterFunction phi,
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
@@ -85,7 +88,7 @@ void Euler(
 		for (int i = fict; i < N + fict; i++) {
 			r_array = FindR(W[i - 1], W[i], W[i+1]);
 			for (int j = 0; j < 3; j++) {
-				F[i][j] = F_low[i][j] - CHARM(r_array[j])*(F_low[i][j] - F_high[i][j]);
+				F[i][j] = F_low[i][j] - phi(r_array[j])*(F_low[i][j] - F_high[i][j]);
 			}
 		}
 	}
@@ -603,6 +606,7 @@ void UpdateArrays(
 	std::string high_order_method,
 	std::string solver,
 	std::string TVD_solver,
+	LimiterFunction phi,
 	bool Viscous_flag, double mu0,
 	std::string time_method,
 	std::vector<double> x,double dt) {
@@ -631,7 +635,7 @@ void UpdateArrays(
 	if (time_method == "RK3") {
 		RK3(W_new, W, method, solver, fict, N + fict - 1, x, dt);
 	} else {
-		Euler(W_new, W, method, high_order_method, solver, TVD_solver, fict, N + fict - 1, x, dt);
+		Euler(W_new, W, method, high_order_method, solver, TVD_solver, phi, fict, N + fict - 1, x, dt);
 	}	
 
 	for (int i = fict; i < N + fict - 1; i++) {

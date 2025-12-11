@@ -1,22 +1,25 @@
 # Параметры физической задачи
 [simulation]
 gamma = 1.4
-Soda_test = "test4"
+Soda_test = "test3"
 
 # Параметры схемы
 [scheme]
-methods = ["Godunov"]
+methods = ["MacCORMACK"]
 solvers = ["Exact"]
 
-Diffusion = "Off"
+Diffusion = "On"
 Q = 0.2
 
-Viscous = "On"
+Viscous = "Off"
 mu = 1.0
 
 TVD = "Off"
 High_order_method = "ENO"
-TVD_solver = "HLL"
+TVD_solver = "Exact"
+# Рекомендованы: CHARM, Koren, MC, Osher, ospre, superbee, Sweby 
+# vanLeer
+TVD_limiter = "vanAlbada1"
 
 N_x = 200
 L_x = 1.0

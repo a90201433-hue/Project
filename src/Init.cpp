@@ -9,7 +9,7 @@
 
 extern int N, fo, step_max, bound_case;
 extern double L, t_max, x0, gamm, CFL, Q, mu0;
-extern std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver;
+extern std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver, TVD_limiter;
 extern std::vector<std::string> methods, solvers;
 extern bool Diffusion_flag, Viscous_flag, TVD_flag;
 extern int fict;
@@ -35,6 +35,7 @@ void readConfig() {
 		methods.push_back("TVD");
 		solvers.push_back(TVD_solver);
 	}
+	TVD_limiter = (TVD_flag == true) ? scheme["TVD_limiter"].str : "superbee";
 
 	if (scheme.count("methods") == 0) {
 		std::cout << "\nНе найдены виды схем. Используется схема Годунова." << std::endl;

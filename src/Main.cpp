@@ -12,12 +12,13 @@
 #include "lib/Acoustic.h"
 #include "lib/GeneralFunctions.h"
 #include "lib/Analis.h"
+#include "lib/Limiters.h"
 
 using DataArray = std::vector<std::vector<double>>;
 
 int N, fo, step_max, bound_case;
 double L, t_max, x0, gamm, CFL, Q, mu0;
-std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver;
+std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver, TVD_limiter;
 std::vector<std::string> methods, solvers;
 bool Diffusion_flag, Viscous_flag, TVD_flag;
 
@@ -54,6 +55,28 @@ void GetCommonDt(std::map<std::string, DataArray> W, std::vector<std::string> me
 	dt_common = *std::min_element(times.begin(), times.end());
 	return;
 
+}
+
+std::map<std::string, LimiterFunction> get_limiter_map() {
+    std::map<std::string, LimiterFunction> limiter_map = {
+        {"superbee",   &superbee}, 
+		{"vanAlbada1", &vanAlbada1}, 
+		// Дополнительные лимитеры, которые вы предоставили:
+		{"CHARM",      &CHARM},
+		{"HCUS",       &HCUS},
+		{"HQUICK",     &HQUICK},
+		{"Koren",      &Koren},
+		{"minmod",     &minmodLim}, // Часто называют просто minmod
+		{"MC",         &MC},        // MC (Monotonized Central)
+		{"Osher",      &OsherLim},  // Osher and Chakravarthy
+		{"ospre",      &ospre},     // Ospre (Oshers-Sweby-P. R. E.)
+		{"smart",      &smart},
+		{"Sweby",      &Sweby},
+		{"UMIST",      &UMIST},
+		{"vanAlbada2", &vanAlbada2},
+		{"vanLeer",    &vanLeer}
+    };
+    return limiter_map;
 }
 
 void printProgressBar(double t, double t_max) {
@@ -319,8 +342,9 @@ int main() {
 		}
 		t += dt_common;
 		
-		printProgressTree(t, t_max);
-
+		//printProgressTree(t, t_max);
+		printProgressBar(t, t_max);
+		LimiterFunction selected_limiter = get_limiter_map().at(TVD_limiter);
 		for (std::string& method_name : methods) {
 			
 			UpdateArrays(W_ByMethods[method_name], 
@@ -331,6 +355,7 @@ int main() {
 						 high_order_method,
 						 Solver_ByMethods[method_name], 
 						 TVD_solver,
+						 selected_limiter,
 						 Viscous_flag, mu0,
 				     	 "Euler", x, dt_common);
 				
@@ -420,7 +445,7 @@ int main() {
 
 	for (auto& pair : AnalysisFiles) {
         	pair.second.close();
-   	 }
+	}
 
 	std::cout << std::endl << "Завершено успешно." << std::endl;	
 	return 0;

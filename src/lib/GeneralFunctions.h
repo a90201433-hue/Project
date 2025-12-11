@@ -1,6 +1,10 @@
 #ifndef _GENERAL_FUNCTIONS_H_
 #define _GENERAL_FUNCTIONS_H
 
+#include <functional>
+
+using LimiterFunction = std::function<double(double)>;
+
 typedef double (*RecFunc)(double a, double b);
 double minmod(double a, double b);
 
@@ -28,13 +32,16 @@ void TimePredictor(
 	std::vector<double> x,
 	double dt
 );
+
+
 void Euler(
 	std::vector<std::vector<double>>& W_new, 
 	std::vector<std::vector<double>> W, 
-    	std::string method, 
-		std::string high_order_method,
+    std::string method, 
+	std::string high_order_method,
 	std::string solver,
 	std::string TVD_solver,
+	LimiterFunction phi,
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, double dt
@@ -120,6 +127,7 @@ void UpdateArrays(
 	std::string high_order_method,
 	std::string solver,
 	std::string TVD_solver,
+	LimiterFunction phi,
 	bool Viscous_flag, double mu0,
 	std::string time_method,
 	std::vector<double> x, double dt);
