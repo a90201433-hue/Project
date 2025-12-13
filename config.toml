@@ -1,12 +1,13 @@
 # Параметры физической задачи
 [simulation]
 gamma = 1.4
-Soda_test = "test3"
+Soda_test = "test4"
 
 # Параметры схемы
 [scheme]
-methods = ["MacCORMACK"]
-solvers = ["Exact"]
+methods = ["WENO"]
+solvers = ["HLL"]
+time_integration_methods = ["RK3"]
 
 Diffusion = "On"
 Q = 0.2
@@ -31,5 +32,6 @@ CFL = 0.125
 
 # Параметры записи
 [recording]
-fo = 10
-step_max = 1000
+step_fo = 10
+time_fo = 0.001
+step_max = 10000

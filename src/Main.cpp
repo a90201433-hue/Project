@@ -16,10 +16,10 @@
 
 using DataArray = std::vector<std::vector<double>>;
 
-int N, fo, step_max, bound_case;
-double L, t_max, x0, gamm, CFL, Q, mu0;
+int N, step_fo, step_max, bound_case;
+double L, t_max, time_fo, x0, gamm, CFL, Q, mu0;
 std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver, TVD_limiter;
-std::vector<std::string> methods, solvers;
+std::vector<std::string> methods, solvers, time_methods;
 bool Diffusion_flag, Viscous_flag, TVD_flag;
 
 int fict = 3;
@@ -213,20 +213,22 @@ void printProgressTree(double t, double t_max) {
 
 void InitMaps(std::vector<std::string> methods, std::vector<std::string> solvers, DataArray W_0,
 	      	  std::map<std::string, std::string>& Solver_Map,
+			  std::map<std::string, std::string>& TimeIntergation_Map,
 	      	  std::map<std::string, DataArray>& W_map,
       	      std::map<std::string, DataArray>& W_new_map,
 	      	  std::map<std::string, DataArray>& W_b_map,
 	      	  std::map<std::string, DataArray>& F_map) {
 
 	const size_t Central_num = N + 2 * fict - 1;
-    	const size_t Bound_num = N + 2 * fict;
+    const size_t Bound_num = N + 2 * fict;
 	
 	size_t i = 0;
 	for (const std::string& method_name : methods) {
         
-        	std::cout << "Инициализация массивов для метода: " << method_name << std::endl;
+        std::cout << "Инициализация массивов для метода: " << method_name << std::endl;
 		
 		Solver_Map[method_name] = solvers[i];
+		TimeIntergation_Map[method_name] = time_methods[i];
 		i++;
 
 		W_map[method_name] = W_0;
@@ -265,7 +267,8 @@ int main() {
 	InitValues(Soda, rho_L, u_L, P_L, rho_R, u_R, P_R, t_max, x0, xc, W_0);
 
 	for (auto& method: methods){	
-		CreateDir("CSV_files/ActualRes", method);
+		CreateDir("CSV_files/ActualRes/TimeRec", method);
+		CreateDir("CSV_files/ActualRes/StepRec", method);
 
 	}
 	
@@ -273,8 +276,9 @@ int main() {
 	std::map<std::string, DataArray> W_new_ByMethods;
 	std::map<std::string, DataArray> W_b_ByMethods;
 	std::map<std::string, DataArray> F_ByMethods;
-	std::map<std::string, std::string> Solver_ByMethods;	
-	InitMaps(methods, solvers, W_0, Solver_ByMethods, 
+	std::map<std::string, std::string> Solver_ByMethods;
+	std::map<std::string, std::string> TimeIntergation_ByMethods;	
+	InitMaps(methods, solvers, W_0, Solver_ByMethods, TimeIntergation_ByMethods,
 		 W_ByMethods, W_new_ByMethods, W_b_ByMethods, F_ByMethods);
 
 	
@@ -327,11 +331,11 @@ int main() {
 
 
 	// For all methods
-	double t = 0.0;
+	double t = 0.0, rec_time = 0.0;
 	double dt_common;
 	int step = 0;
 
-	while (t <= t_max) {
+	while (t <= t_max && step <= step_max) {
 		
 		//GetDt(W_WENO, xc, dt_common);
 		GetCommonDt(W_ByMethods, methods, x, dt_common);
@@ -357,7 +361,7 @@ int main() {
 						 TVD_solver,
 						 selected_limiter,
 						 Viscous_flag, mu0,
-				     	 "Euler", x, dt_common);
+				     	 TimeIntergation_ByMethods[method_name], x, dt_common);
 				
 			BoundCond(W_ByMethods[method_name]);
 
@@ -395,10 +399,10 @@ int main() {
 			}
 
 		}
-		if (step % fo == 0){
+		if (step % step_fo == 0){
 			for (std::string& method_name : methods) {
 				std::string filename = 
-					"CSV_files/ActualRes/" 
+					"CSV_files/ActualRes/StepRec/" 
 					+ method_name + "/step_"  
 					+ std::to_string(step) 
 					+ ".csv";
@@ -417,6 +421,28 @@ int main() {
 						RatioL);
 			}	
 		}		
+
+		if (t > rec_time){
+			rec_time += time_fo;
+			for (std::string& method_name : methods) {
+				std::string filename = 
+					"CSV_files/ActualRes/TimeRec/" 
+					+ method_name + "/step_"  
+					+ std::to_string(step) 
+					+ ".csv";
+				file.open(filename);
+				WriteToCSV(W_ByMethods[method_name], xc, t, file);	
+				file.close();
+			 	SaveAnalysisData(AnalysisFiles[method_name], 
+                    			t, 
+ 								W_ByMethods[method_name], 
+								xc, 
+								W_L_riemann, W_R_riemann, W_star_riemann, x0,
+								GetParamsFromChoosingWave,
+								RatioL);
+			}	
+		}	
+
 		if (t == t_max){
 
 			for (std::string& method_name : methods) {

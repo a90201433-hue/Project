@@ -7,10 +7,10 @@
 #include "lib/ParseTOML.h"
 
 
-extern int N, fo, step_max, bound_case;
-extern double L, t_max, x0, gamm, CFL, Q, mu0;
+extern int N, step_fo, step_max, bound_case;
+extern double L, t_max, time_fo, x0, gamm, CFL, Q, mu0;
 extern std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver, TVD_limiter;
-extern std::vector<std::string> methods, solvers;
+extern std::vector<std::string> methods, solvers, time_methods;
 extern bool Diffusion_flag, Viscous_flag, TVD_flag;
 extern int fict;
 
@@ -34,7 +34,9 @@ void readConfig() {
 		TVD_solver = scheme["TVD_solver"].str;
 		methods.push_back("TVD");
 		solvers.push_back(TVD_solver);
+		time_methods.push_back("Euler");
 	}
+
 	TVD_limiter = (TVD_flag == true) ? scheme["TVD_limiter"].str : "superbee";
 
 	if (scheme.count("methods") == 0) {
@@ -55,8 +57,8 @@ void readConfig() {
 	}		
 	
 	if (scheme.count("solvers") == 0) {
-		std::cout << "\nНе найдены решатели. Используется Решатель Римана.." << std::endl;
-    		solvers = {"Exact"};
+		std::cout << "\nНе найдены решатели. Используется приближенный решатель Римана HLL." << std::endl;
+    		solvers = {"HLL"};
 	} else {
     		TomlValue &arr = scheme["solvers"];
 
@@ -66,10 +68,42 @@ void readConfig() {
 
     		// если список пустой
     		if (methods.empty()){
-			std::cout << "\nНе найдены решатели. Используется Решатель Римана." << std::endl;	
-        		solvers.push_back("Exact");
+			std::cout << "\nНе найдены решатели. Используется приближенный решатель Римана HLL." << std::endl;	
+        		solvers.push_back("HLL");
 		}
 	}
+
+	if (methods.size() > solvers.size()){
+		size_t n = methods.size(), k = solvers.size();
+		for(size_t i = 0; i < (n - k); i++){
+			solvers.push_back("HLL");
+		}
+	}
+
+	if (scheme.count("time_integration_methods") == 0) {
+		std::cout << "\nНе найдены методы интегирования. Используется интегрирование по Эйлеру" << std::endl;
+    		time_methods = {"Euler"};
+	} else {
+    		TomlValue &arr = scheme["time_integration_methods"];
+
+    		// извлекаем список
+    		for (auto &x : arr.list)
+        	time_methods.push_back(x.str);
+
+    		// если список пустой
+    		if (time_methods.empty()){
+			std::cout << "\nНе найдены методы интегирования. Используется интегрирование по Эйлеру" << std::endl;	
+        		time_methods.push_back("Euler");
+		}
+	}
+
+	if (methods.size() > time_methods.size()){
+		size_t n = methods.size(), k = time_methods.size();
+		for(size_t i = 0; i < (n - k); i++){
+			time_methods.push_back("Euler");
+		}
+	}
+
 
 	Diffusion_flag = (scheme["Diffusion"].str == "On") ? true : false;
 	Q = (Diffusion_flag == true) ? scheme["Q"].number : 0.0;
@@ -85,7 +119,8 @@ void readConfig() {
 	x_right_bound = scheme["x_right_bound"].str;
 
 
-	fo = toml.root["recording"].table["fo"].number;
+	step_fo = toml.root["recording"].table["step_fo"].number;
+	time_fo = toml.root["recording"].table["time_fo"].number;
 	step_max = toml.root["recording"].table["step_max"].number;
 
 }
