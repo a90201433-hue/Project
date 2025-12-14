@@ -1,18 +1,19 @@
 # Параметры физической задачи
 [simulation]
 gamma = 1.4
-Soda_test = "test3"
+Soda_test = "test4"
 
 # Параметры схемы
 [scheme]
-methods = ["MacCORMACK"]
+methods = ["WENO"]
 solvers = ["Exact"]
 
-Diffusion = "On"
+Diffusion = "Off"
 Q = 0.2
 
-Viscous = "Off"
-mu = 1.0
+Viscous = "On"
+C1 = 0.1
+C2 = 1.0
 
 TVD = "Off"
 High_order_method = "ENO"

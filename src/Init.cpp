@@ -8,7 +8,7 @@
 
 
 extern int N, fo, step_max, bound_case;
-extern double L, t_max, x0, gamm, CFL, Q, mu0;
+extern double L, t_max, x0, gamm, CFL, Q, C1, C2;
 extern std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver, TVD_limiter;
 extern std::vector<std::string> methods, solvers;
 extern bool Diffusion_flag, Viscous_flag, TVD_flag;
@@ -75,7 +75,8 @@ void readConfig() {
 	Q = (Diffusion_flag == true) ? scheme["Q"].number : 0.0;
 
 	Viscous_flag = (scheme["Viscous"].str == "On") ? true : false;
-	mu0 = (Viscous_flag == true) ? scheme["mu"].number : 0.0;
+	C1 = (Viscous_flag == true) ? scheme["C1"].number : 0.0;
+	C2 = (Viscous_flag == true) ? scheme["C2"].number : 0.0;
 	
 
 	N = scheme["N_x"].number;

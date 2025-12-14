@@ -12,7 +12,7 @@
 #include "lib/WENO.h"
 #include "lib/Limiters.h"
 
-extern double gamm, L;
+extern double gamm, L, C1, C2;
 extern int N, fict;
 
 using DataArray = std::vector<std::vector<double>>;
@@ -63,7 +63,7 @@ void LRStreams(
 void Euler(
 	DataArray& W_new, 
 	DataArray W, 
-    std::string method, 
+    	std::string method, 
 	std::string high_order_method,
 	std::string solver,
 	std::string TVD_solver,
@@ -71,17 +71,17 @@ void Euler(
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
-	double dt) {
+	double dt, bool Viscous_flag) {
 
 	DataArray F(N + 2 * fict);
 	InitialZeros(F, 3);
     
 	if (method == "TVD") {
 		DataArray F_low(N + 2 * fict, {0.0, 0.0, 0.0});
-		GetFluxes(W, F_low, "Godunov", TVD_solver, x, dt);
+		GetFluxes(W, F_low, "Godunov", TVD_solver, x, dt, Viscous_flag);
 
 		DataArray F_high(N + 2 * fict, {0.0, 0.0, 0.0});
-		GetFluxes(W, F_high, high_order_method, TVD_solver, x, dt);
+		GetFluxes(W, F_high, high_order_method, TVD_solver, x, dt, Viscous_flag);
 
 		std::vector<double> r_array(3, 0.0);
 
@@ -93,7 +93,7 @@ void Euler(
 		}
 	}
 	else {
-		GetFluxes(W, F, method, solver, x, dt);
+		GetFluxes(W, F, method, solver, x, dt, Viscous_flag);
 	}
 
 	for (int i = init_idx; i < end_idx; i++) {
@@ -120,7 +120,7 @@ void RK3(
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
-	double dt) {
+	double dt, bool Viscous_flag) {
 
 	DataArray W1(N + 2 * fict - 1);
 	InitialZeros(W1, 3);
@@ -130,7 +130,7 @@ void RK3(
 	InitialZeros(F, 3);
 	
 
-	GetFluxes(W, F, method, solver, x, dt);
+	GetFluxes(W, F, method, solver, x, dt, Viscous_flag);
 	for (int i = init_idx; i < end_idx; i++) {
 		double dx = x[i + 1] - x[i];
 
@@ -147,7 +147,7 @@ void RK3(
 	}
 	BoundCond(W1);
 
-	GetFluxes(W1, F, method, solver, x, dt);
+	GetFluxes(W1, F, method, solver, x, dt, Viscous_flag);
 	for (int i = init_idx; i < end_idx; i++) {
 		double dx = x[i + 1] - x[i];
 
@@ -168,7 +168,7 @@ void RK3(
 	}
 	BoundCond(W2);
 
-	GetFluxes(W2, F, method,solver, x, dt);
+	GetFluxes(W2, F, method,solver, x, dt, Viscous_flag);
 	for (int i = init_idx; i < end_idx; i++) {
 		double dx = x[i + 1] - x[i];
 			
@@ -460,16 +460,31 @@ void GetFluxes(
 	std::string method,
 	std::string solver,
 	std::vector<double> x,
-	double dt
+	double dt, 
+	bool Viscous_flag
 ) {
 	if (method == "WENO") {
 		WENOStreams(W, F);
+		if (Viscous_flag) {
+			double q = 0.0;
+			for (int i = fict + 1; i < N + fict - 1; i++) {
+				Visc(W[i - 1], W[i], x[i - 1], x[i], q);
+				F[i][1] += q;
+			}
+		}
 	} else {
 		std::vector<std::vector<double>> W_b(N + 2 * fict);
 		InitialZeros(W_b, 3);
 		FindBoundValues(W, W_b, F, x, dt, method, solver);
 		if (solver == "Exact"){
 			Streams(W_b, F);
+			if (Viscous_flag) {
+				double q = 0.0;
+				for (int i = fict + 1; i < N + fict - 1; i++) {
+					Visc(W[i - 1], W[i], x[i - 1], x[i], q);
+					F[i][1] += q;
+				}
+			}
 		}
 	}
 }
@@ -478,7 +493,7 @@ void MacCORMACK(
 	DataArray& W,
 	DataArray W_new,	
 	std::vector<double> x, 
-	bool Viscous_flag, double mu0,
+	bool Viscous_flag,
 	double dt,
 	std::string solver){
 	
@@ -487,6 +502,14 @@ void MacCORMACK(
 	DataArray F(Central_num);
 	InitialZeros(F, 3);
 	Streams(W, F); 
+	//VISCOUS
+	if (Viscous_flag) {
+		double q = 0.0;
+		for (int i = fict + 1; i < N + fict - 1; i++) {
+			Visc(W[i - 1], W[i], x[i - 1], x[i], q);
+			F[i][1] += q;
+		}
+	}
 
 	DataArray U(Central_num);
 	ConvertWtoU(W, U);
@@ -512,11 +535,20 @@ void MacCORMACK(
 
 	for (int i = 0; i < Central_num; i++) {
 		F_tilde[i][0] = W_tilde[i][0] * W_tilde[i][1]; // rho*u
-
+		
 		F_tilde[i][1] = W_tilde[i][0] * std::pow(W_tilde[i][1], 2) + W_tilde[i][2]; // rho*u^2 + P
 		
 		double E = 0.5 * std::pow(W_tilde[i][1], 2) + W_tilde[i][2] / (W_tilde[i][0] * (gamm - 1.0));
 		F_tilde[i][2] = W_tilde[i][1] * (W_tilde[i][0] * E + W_tilde[i][2]); // u(rho*E + P)	
+
+	}
+	//VISCOUS
+	if (Viscous_flag) {
+		double q = 0.0;
+		for (int i = fict + 1; i < N + fict - 1; i++) {
+			Visc(W_tilde[i - 1], W_tilde[i], x[i - 1], x[i], q);
+			F_tilde[i][1] += q;
+		}
 	}
 
 	DataArray U_new(Central_num);
@@ -595,7 +627,36 @@ void NOperator(
 	}	
 }	
 
+void Visc(
+	std::vector<double> W_L, 
+	std::vector<double> W_R,
+	double x_L, 
+	double x_R,
+	double& q) {
+			
+	double dx = x_R - x_L;
+	double du = W_R[1] - W_L[1];
 
+	if (du >= 0.0) {
+		q = 0.0;
+		return;
+	}
+
+	double rho_b = 0.5 * (W_L[0] + W_R[0]);
+	if (rho_b <= 0.0) {
+		q = 0.0;
+		return;
+	}
+
+	double c_L = std::sqrt(gamm * std::max(1e-7, W_L[2]) / std::max(1e-7, W_L[0]));
+	double c_R = std::sqrt(gamm * std::max(1e-7, W_R[2]) / std::max(1e-7, W_R[0]));
+	double c_b = 0.5 * (c_L + c_R); 
+
+	q = C2 * rho_b * du * du;
+	q += C1 * rho_b * c_b * std::abs(du);
+
+}
+	  
 
 void UpdateArrays(
 	std::vector<std::vector<double>>& W,
@@ -607,36 +668,26 @@ void UpdateArrays(
 	std::string solver,
 	std::string TVD_solver,
 	LimiterFunction phi,
-	bool Viscous_flag, double mu0,
+	bool Viscous_flag,
 	std::string time_method,
 	std::vector<double> x,double dt) {
 
 	std::vector<std::vector<double>> W_L(N + 2 * fict);
 	std::vector<std::vector<double>> W_R(N + 2 * fict);
 
-	
-
 	if (method == "MacCORMACK") {
-		MacCORMACK(W, W_new, x, Viscous_flag, mu0, dt, solver);
+		
+		MacCORMACK(W, W_new, x, Viscous_flag, dt, solver);
 		return;
 	}
 	
-	for (int i = fict; i < N + fict - 1; i++) {
-                double dx = x[i + 1] - x[i];
-                double du = W[i + 1][1] - W[i][1];
-
-                if (du / dx < 0.0) {
-                        W[i][2] = W[i][2] + mu0 * W[i][0] * std::pow(du, 2);
-                } else {
-                        W[i][2] = W[i][2];
-                }
+	// Для остальных методов
+	if (time_method == "RK3") {
+		RK3(W_new, W, method, solver, fict, N + fict - 1, x, dt, Viscous_flag);
+	} else {
+		Euler(W_new, W, method, high_order_method, solver, TVD_solver, phi, fict, N + fict - 1, x, dt, Viscous_flag);
 	}
 
-	if (time_method == "RK3") {
-		RK3(W_new, W, method, solver, fict, N + fict - 1, x, dt);
-	} else {
-		Euler(W_new, W, method, high_order_method, solver, TVD_solver, phi, fict, N + fict - 1, x, dt);
-	}	
 
 	for (int i = fict; i < N + fict - 1; i++) {
 		W[i] = W_new[i];
