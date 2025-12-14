@@ -19,6 +19,12 @@ using DataArray = std::vector<std::vector<double>>;
 
 typedef double (*RecFunc)(double a, double b);
 
+double sgn(double x) {
+	if (x == 0.0) return 0.0;
+	else if (x > 0.0) return 1.0;
+	else return -1.0;
+}
+
 double minmod(double a, double b) {
 	if (a * b <= 0) {
 		return 0.0;
@@ -32,6 +38,27 @@ double minmod(double a, double b) {
 	return 0.0;
 }
 
+double vanLeer(double a, double b) {
+	if (a * b <= 0) {
+		return 0.0;
+	}
+	else {
+		return 2*a*b/(a + b);
+	}	
+}
+
+double superbee(double a, double b) {
+
+	if (a * b <= 0) {
+		return 0.0;
+	}
+	else {
+		return sgn(a)*std::max(std::min(2*std::abs(a), std::abs(b)), std::min(std::abs(a), 2*std::abs(b)));
+	}	
+
+
+
+}
 
 void Streams(
 	DataArray W,
@@ -386,7 +413,7 @@ void FindBoundValues(std::vector<std::vector<double>> W,
 	else if (method == "Kolgan") {
 	
 		FindSlopes(W, Slope);	
-		ReconstructValues(W, Slope, W_L, W_R, &minmod);
+		ReconstructValues(W, Slope, W_L, W_R, &superbee);
 		SolveBoundProblem(W_L, W_R, W_b, F, solver);
 		return;		
 	}

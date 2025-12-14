@@ -6,8 +6,10 @@
 using LimiterFunction = std::function<double(double)>;
 
 typedef double (*RecFunc)(double a, double b);
+double sgn(double x);
 double minmod(double a, double b);
-
+double vanLeer(double a, double b);
+double superbee(double a, double b);
 
 void Streams(
 	std::vector<std::vector<double>> W,

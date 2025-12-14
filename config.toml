@@ -1,24 +1,24 @@
 # Параметры физической задачи
 [simulation]
 gamma = 1.4
-Soda_test = "test4"
+Soda_test = "test5"
 
 # Параметры схемы
 [scheme]
 methods = ["WENO"]
-solvers = ["HLL"]
-time_integration_methods = ["RK3"]
+solvers = ["Exact"]
+time_integration_methods = ["Euler"]
 
-Diffusion = "On"
+Diffusion = "Off"
 Q = 0.2
 
 Viscous = "Off"
 mu = 1.0
 
-TVD = "Off"
-High_order_method = "ENO"
-TVD_solver = "Exact"
-# Рекомендованы: CHARM, Koren, MC, Osher, ospre, superbee, Sweby 
+TVD = "On"
+High_order_method = "WENO"
+TVD_solver = "HLL"
+# Рекомендованы: 
 # vanLeer
 TVD_limiter = "vanAlbada1"
 
