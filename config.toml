@@ -5,6 +5,7 @@ Soda_test = "test4"
 
 # Параметры схемы
 [scheme]
+
 methods = ["WENO"]
 solvers = ["Exact"]
 
@@ -23,7 +24,9 @@ TVD_solver = "Exact"
 # vanLeer
 TVD_limiter = "vanAlbada1"
 
-N_x = 200
+methods = ["Kolgan"]
+solvers = ["HLL"]
+N_x = 100
 L_x = 1.0
 
 # Граничные условия. free - свободная граница; wall - непроницаемая стена; periodic - периодические

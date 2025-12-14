@@ -348,6 +348,7 @@ int main() {
 		for (std::string& method_name : methods) {
 			
 			UpdateArrays(W_ByMethods[method_name], 
+
 				     	 W_new_ByMethods[method_name], 
 				     	 W_b_ByMethods[method_name], 
 				     	 F_ByMethods[method_name], 
@@ -359,6 +360,10 @@ int main() {
 						 Viscous_flag,
 				     	 "Euler", x, dt_common);
 				
+
+				    
+
+
 			BoundCond(W_ByMethods[method_name]);
 
 			if (Diffusion_flag == true) {
