@@ -26,8 +26,6 @@ TVD_solver = "Exact"
 # vanLeer
 TVD_limiter = "vanAlbada1"
 
-methods = ["Kolgan"]
-solvers = ["HLL"]
 N_x = 100
 L_x = 1.0
 
