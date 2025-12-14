@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+
 extern int N, fict;
 extern std::string x_left_bound, x_right_bound;
 
@@ -11,6 +12,7 @@ extern int N, fict;
 extern std::string x_left_bound, x_right_bound;
 
 void BoundCond(std::vector<std::vector<double>>& W) {
+
 
 
 	// Free bound

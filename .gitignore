@@ -1,4 +1,6 @@
+# visualisation files
 CSV_files/*
+output/
 
 # build artifacts
 build/
