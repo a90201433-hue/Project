@@ -17,7 +17,7 @@
 using DataArray = std::vector<std::vector<double>>;
 
 int N, step_fo, step_max, bound_case;
-double L, t_max, time_fo, x0, gamm, CFL, Q, mu0;
+double L, t_max, time_fo, x0, gamm, CFL, Q, C1, C2;
 std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver, TVD_limiter;
 std::vector<std::string> methods, solvers, time_methods;
 bool Diffusion_flag, Viscous_flag, TVD_flag;
@@ -352,6 +352,7 @@ int main() {
 		for (std::string& method_name : methods) {
 			
 			UpdateArrays(W_ByMethods[method_name], 
+
 				     	 W_new_ByMethods[method_name], 
 				     	 W_b_ByMethods[method_name], 
 				     	 F_ByMethods[method_name], 
@@ -360,9 +361,16 @@ int main() {
 						 Solver_ByMethods[method_name], 
 						 TVD_solver,
 						 selected_limiter,
-						 Viscous_flag, mu0,
+
+
+						 Viscous_flag, 
 				     	 TimeIntergation_ByMethods[method_name], x, dt_common);
+
 				
+
+				    
+
+
 			BoundCond(W_ByMethods[method_name]);
 
 			if (Diffusion_flag == true) {

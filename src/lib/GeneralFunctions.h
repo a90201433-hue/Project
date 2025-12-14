@@ -46,7 +46,7 @@ void Euler(
 	LimiterFunction phi,
 	int init_idx, 
 	int end_idx, 
-	std::vector<double> x, double dt
+	std::vector<double> x, double dt, bool Viscous_flag
 );
 
 void RK3(
@@ -59,7 +59,8 @@ void RK3(
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
-	double dt
+	double dt, bool Viscous_flag
+	
 );
 
 void FindSlopes(std::vector<std::vector<double>> W, std::vector<std::vector<double>>& Slope);
@@ -99,14 +100,14 @@ void GetFluxes(
 	std::string method,
 	std::string solver,
 	std::vector<double> x,
-	double dt
+	double dt, bool Viscous_flag
 );
 
 void MacCORMACK(
 	std::vector<std::vector<double>>& W,
 	std::vector<std::vector<double>> W_new,	
 	std::vector<double> x, 
-	bool Viscous_flag, double mu0,
+	bool Viscous_flag,
 	double dt, 
 	std::string solver);
 
@@ -120,6 +121,14 @@ void NOperator(
 	std::vector<std::vector<double>> U,
 	double Q);
 
+void Visc(
+	std::vector<double> W_L, 
+	std::vector<double> W_R,
+	double x_L, 
+	double x_R,
+	double& q);
+
+
 void UpdateArrays(
 	std::vector<std::vector<double>>& W,
 	std::vector<std::vector<double>> W_new,
@@ -130,7 +139,7 @@ void UpdateArrays(
 	std::string solver,
 	std::string TVD_solver,
 	LimiterFunction phi,
-	bool Viscous_flag, double mu0,
+	bool Viscous_flag,
 	std::string time_method,
 	std::vector<double> x, double dt);
 

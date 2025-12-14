@@ -5,6 +5,7 @@ Soda_test = "test5"
 
 # Параметры схемы
 [scheme]
+
 methods = ["WENO"]
 solvers = ["Exact"]
 time_integration_methods = ["Euler"]
@@ -12,8 +13,10 @@ time_integration_methods = ["Euler"]
 Diffusion = "Off"
 Q = 0.2
 
-Viscous = "Off"
-mu = 1.0
+Viscous = "On"
+# Рекомендованы С1: 0.1-0.5, С2: 1.0-2.0
+C1 = 0.1
+C2 = 1.0
 
 TVD = "On"
 High_order_method = "WENO"
@@ -22,7 +25,7 @@ TVD_solver = "HLL"
 # vanLeer
 TVD_limiter = "vanAlbada1"
 
-N_x = 200
+N_x = 100
 L_x = 1.0
 
 # Граничные условия. free - свободная граница; wall - непроницаемая стена; periodic - периодические
