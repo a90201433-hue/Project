@@ -65,7 +65,7 @@ double smart(double r) {
     return (r > 1e4) ? 4.0 : std::max(0.0, std::min(2*r, std::min(0.25 + 0.75*r, 4.0)));
 }
 
-double superbee(double r) {
+double superbeeLim(double r) {
     return (r > 1e4) ? 2.0 : std::max(0.0, std::max(std::min(2*r, 1.0), std::min(r, 2.0)));
 }
 
@@ -85,6 +85,6 @@ double vanAlbada2(double r) {
     return (r > 1e4) ? 0.0 : 2*r/(std::pow(r, 2) + 1.0);
 }
 
-double vanLeer(double r) {
+double vanLeerLim(double r) {
     return (r > 1e4) ? 2.0 : (r + std::abs(r))/(1 + std::abs(r));
 }

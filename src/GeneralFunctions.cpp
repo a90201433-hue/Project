@@ -95,6 +95,7 @@ void Euler(
 	std::string solver,
 	std::string TVD_solver,
 	LimiterFunction phi,
+	RecLimiterFunction func,
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
@@ -105,10 +106,10 @@ void Euler(
     
 	if (method == "TVD") {
 		DataArray F_low(N + 2 * fict, {0.0, 0.0, 0.0});
-		GetFluxes(W, F_low, "Godunov", TVD_solver, x, dt, Viscous_flag);
+		GetFluxes(W, F_low, "Godunov", TVD_solver, func, x, dt, Viscous_flag);
 
 		DataArray F_high(N + 2 * fict, {0.0, 0.0, 0.0});
-		GetFluxes(W, F_high, high_order_method, TVD_solver, x, dt, Viscous_flag);
+		GetFluxes(W, F_high, high_order_method, TVD_solver, func, x, dt, Viscous_flag);
 
 		std::vector<double> r_array(3, 0.0);
 
@@ -120,7 +121,7 @@ void Euler(
 		}
 	}
 	else {
-		GetFluxes(W, F, method, solver, x, dt, Viscous_flag);
+		GetFluxes(W, F, method, solver, func, x, dt, Viscous_flag);
 	}
 
 	for (int i = init_idx; i < end_idx; i++) {
@@ -144,6 +145,7 @@ void RK3(
 	DataArray W, 
 	std::string method,
 	std::string solver,
+	RecLimiterFunction func,
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, 
@@ -157,7 +159,7 @@ void RK3(
 	InitialZeros(F, 3);
 	
 
-	GetFluxes(W, F, method, solver, x, dt, Viscous_flag);
+	GetFluxes(W, F, method, solver, func, x, dt, Viscous_flag);
 	for (int i = init_idx; i < end_idx; i++) {
 		double dx = x[i + 1] - x[i];
 
@@ -174,7 +176,7 @@ void RK3(
 	}
 	BoundCond(W1);
 
-	GetFluxes(W1, F, method, solver, x, dt, Viscous_flag);
+	GetFluxes(W1, F, method, solver, func, x, dt, Viscous_flag);
 	for (int i = init_idx; i < end_idx; i++) {
 		double dx = x[i + 1] - x[i];
 
@@ -195,7 +197,7 @@ void RK3(
 	}
 	BoundCond(W2);
 
-	GetFluxes(W2, F, method,solver, x, dt, Viscous_flag);
+	GetFluxes(W2, F, method, solver, func, x, dt, Viscous_flag);
 	for (int i = init_idx; i < end_idx; i++) {
 		double dx = x[i + 1] - x[i];
 			
@@ -265,7 +267,7 @@ void ReconstructValues(
 	std::vector<std::vector<double>> Slope,
 	std::vector<std::vector<double>>& W_L,
 	std::vector<std::vector<double>>& W_R, 
-	RecFunc function
+	RecLimiterFunction function
 ) {
 	for (int j = 0; j < 3; j++){
 		for (int i = fict; i < N + fict; i++) {
@@ -392,7 +394,8 @@ void FindBoundValues(std::vector<std::vector<double>> W,
 					 std::vector<double> x, 
 					 double dt, 
 					 std::string method,
-					 std::string solver) {
+					 std::string solver,
+					RecLimiterFunction func) {
 
 	std::vector<std::vector<double>> Slope(N + 2 * fict, std::vector<double> (3, 0.0));
 	std::vector<std::vector<double>> W_L(N + 2 * fict, std::vector<double> (3, 0.0));
@@ -413,7 +416,7 @@ void FindBoundValues(std::vector<std::vector<double>> W,
 	else if (method == "Kolgan") {
 	
 		FindSlopes(W, Slope);	
-		ReconstructValues(W, Slope, W_L, W_R, &superbee);
+		ReconstructValues(W, Slope, W_L, W_R, func);
 		SolveBoundProblem(W_L, W_R, W_b, F, solver);
 		return;		
 	}
@@ -422,7 +425,7 @@ void FindBoundValues(std::vector<std::vector<double>> W,
 
 		ConvertWtoU(W, U);
 		FindSlopes(U, Slope);
-		ReconstructValues(U, Slope, U_L, U_R, &minmod);
+		ReconstructValues(U, Slope, U_L, U_R, func);
 		ConvertUtoW(W_L, U_L);
 		ConvertUtoW(W_R, U_R);
 		SolveBoundProblem(W_L, W_R, W_b, F, solver);
@@ -433,7 +436,7 @@ void FindBoundValues(std::vector<std::vector<double>> W,
 	else if (method == "Rodionov") {
 		
 		FindSlopes(W, Slope);
-		ReconstructValues(W, Slope, W_L, W_R, &minmod);
+		ReconstructValues(W, Slope, W_L, W_R, func);
 		TimePredictor(W_tilde, W, W_L, W_R, fict, N + fict - 1, x, dt);
 		BoundCond(W_tilde);
 		
@@ -443,7 +446,7 @@ void FindBoundValues(std::vector<std::vector<double>> W,
 			}
 		}
 		
-		ReconstructValues(W_half, Slope, W_L, W_R, &minmod);
+		ReconstructValues(W_half, Slope, W_L, W_R, func);
 		SolveBoundProblem(W_L, W_R, W_b, F, solver);
 		return;	
 	}
@@ -452,7 +455,7 @@ void FindBoundValues(std::vector<std::vector<double>> W,
 		
 		ConvertWtoU(W, U);
 		FindSlopes(U, Slope);	
-		ReconstructValues(U, Slope, U_L, U_R, &minmod);
+		ReconstructValues(U, Slope, U_L, U_R, func);
 		ConvertUtoW(W_L, U_L);
 		ConvertUtoW(W_R, U_R);
 		TimePredictor(W_tilde, W, W_L, W_R, fict, N + fict - 1, x, dt);
@@ -465,7 +468,7 @@ void FindBoundValues(std::vector<std::vector<double>> W,
 		}
 		
 		ConvertWtoU(W_half, U_half);
-		ReconstructValues(U_half, Slope, U_L, U_R, &minmod);
+		ReconstructValues(U_half, Slope, U_L, U_R, func);
 		ConvertUtoW(W_L, U_L);
 		ConvertUtoW(W_R, U_R);
 		SolveBoundProblem(W_L, W_R, W_b, F, solver);
@@ -486,6 +489,7 @@ void GetFluxes(
 	DataArray& F,
 	std::string method,
 	std::string solver,
+	RecLimiterFunction func,
 	std::vector<double> x,
 	double dt, 
 	bool Viscous_flag
@@ -502,7 +506,7 @@ void GetFluxes(
 	} else {
 		std::vector<std::vector<double>> W_b(N + 2 * fict);
 		InitialZeros(W_b, 3);
-		FindBoundValues(W, W_b, F, x, dt, method, solver);
+		FindBoundValues(W, W_b, F, x, dt, method, solver, func);
 		if (solver == "Exact"){
 			Streams(W_b, F);
 			if (Viscous_flag) {
@@ -695,6 +699,7 @@ void UpdateArrays(
 	std::string solver,
 	std::string TVD_solver,
 	LimiterFunction phi,
+	RecLimiterFunction func,
 	bool Viscous_flag,
 	std::string time_method,
 	std::vector<double> x,double dt) {
@@ -710,9 +715,9 @@ void UpdateArrays(
 	
 	// Для остальных методов
 	if (time_method == "RK3") {
-		RK3(W_new, W, method, solver, fict, N + fict - 1, x, dt, Viscous_flag);
+		RK3(W_new, W, method, solver, func, fict, N + fict - 1, x, dt, Viscous_flag);
 	} else {
-		Euler(W_new, W, method, high_order_method, solver, TVD_solver, phi, fict, N + fict - 1, x, dt, Viscous_flag);
+		Euler(W_new, W, method, high_order_method, solver, TVD_solver, phi, func, fict, N + fict - 1, x, dt, Viscous_flag);
 	}
 
 

@@ -4,8 +4,9 @@
 #include <functional>
 
 using LimiterFunction = std::function<double(double)>;
+using RecLimiterFunction = std::function<double(double, double)>;
 
-typedef double (*RecFunc)(double a, double b);
+//typedef double (*RecFunc)(double a, double b);
 double sgn(double x);
 double minmod(double a, double b);
 double vanLeer(double a, double b);
@@ -44,6 +45,7 @@ void Euler(
 	std::string solver,
 	std::string TVD_solver,
 	LimiterFunction phi,
+	RecLimiterFunction func,
 	int init_idx, 
 	int end_idx, 
 	std::vector<double> x, double dt, bool Viscous_flag
@@ -55,6 +57,7 @@ void RK3(
 	std::string method,
 	
 	std::string solver,
+	RecLimiterFunction func,
 	
 	int init_idx, 
 	int end_idx, 
@@ -70,7 +73,7 @@ void ReconstructValues(
 	std::vector<std::vector<double>> Slope,
 	std::vector<std::vector<double>>& W_L,
 	std::vector<std::vector<double>>& W_R, 
-	RecFunc function
+	RecLimiterFunction function
 );
 
 void SolveBoundProblem(std::vector<std::vector<double>> W, 
@@ -91,7 +94,8 @@ void FindBoundValues(
 	std::vector<double> x, 
 	double dt, 
 	std::string method,
-	std::string solver
+	std::string solver,
+	RecLimiterFunction func
 );
 
 void GetFluxes(
@@ -99,6 +103,7 @@ void GetFluxes(
 	std::vector<std::vector<double>>& F,
 	std::string method,
 	std::string solver,
+	RecLimiterFunction func,
 	std::vector<double> x,
 	double dt, bool Viscous_flag
 );
@@ -139,6 +144,7 @@ void UpdateArrays(
 	std::string solver,
 	std::string TVD_solver,
 	LimiterFunction phi,
+	RecLimiterFunction func,
 	bool Viscous_flag,
 	std::string time_method,
 	std::vector<double> x, double dt);

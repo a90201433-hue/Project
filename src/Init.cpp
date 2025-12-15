@@ -11,7 +11,7 @@ extern int N, step_fo, step_max, bound_case;
 extern double L, t_max, time_fo, x0, gamm, CFL, Q, C1, C2;
 
 extern std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver, TVD_limiter;
-extern std::vector<std::string> methods, solvers, time_methods;
+extern std::vector<std::string> methods, solvers, time_methods, rec_limiters;
 extern bool Diffusion_flag, Viscous_flag, TVD_flag;
 extern int fict;
 
@@ -105,6 +105,24 @@ void readConfig() {
 		}
 	}
 
+	if (scheme.count("rec_limiters") == 0) {
+		std::cout << "\nНе найдены функции реконструкции. Используется minmod" << std::endl;
+    		rec_limiters = {"minmod"};
+	} else {
+    		TomlValue &arr = scheme["rec_limiters"];
+
+    		// извлекаем список
+    		for (auto &x : arr.list)
+        	rec_limiters.push_back(x.str);
+
+    		// если список пустой
+    		if (rec_limiters.empty()){
+			std::cout << "\n" << std::endl;	
+        		rec_limiters.push_back("minmod");
+		}
+	}
+
+	
 
 	Diffusion_flag = (scheme["Diffusion"].str == "On") ? true : false;
 	Q = (Diffusion_flag == true) ? scheme["Q"].number : 0.0;
@@ -170,7 +188,7 @@ void InitValues(std::string Soda,
 
 	x0 = values["x_gap"].number;
 	t_max = values["max_t"].number;
-		
+	if (t_max == 0.0) t_max = 0.1;
 	
 	for (int i = 0; i < N + 2*fict - 1; i++){
 		if (xc[i] < x0)

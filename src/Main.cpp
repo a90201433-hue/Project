@@ -19,7 +19,7 @@ using DataArray = std::vector<std::vector<double>>;
 int N, step_fo, step_max, bound_case;
 double L, t_max, time_fo, x0, gamm, CFL, Q, C1, C2;
 std::string x_left_bound, x_right_bound, Soda, high_order_method, TVD_solver, TVD_limiter;
-std::vector<std::string> methods, solvers, time_methods;
+std::vector<std::string> methods, solvers, time_methods, rec_limiters;
 bool Diffusion_flag, Viscous_flag, TVD_flag;
 
 int fict = 3;
@@ -58,8 +58,9 @@ void GetCommonDt(std::map<std::string, DataArray> W, std::vector<std::string> me
 }
 
 std::map<std::string, LimiterFunction> get_limiter_map() {
+	
     std::map<std::string, LimiterFunction> limiter_map = {
-        {"superbee",   &superbee}, 
+        	{"superbee",   &superbeeLim}, 
 		{"vanAlbada1", &vanAlbada1}, 
 		// Дополнительные лимитеры, которые вы предоставили:
 		{"CHARM",      &CHARM},
@@ -74,6 +75,16 @@ std::map<std::string, LimiterFunction> get_limiter_map() {
 		{"Sweby",      &Sweby},
 		{"UMIST",      &UMIST},
 		{"vanAlbada2", &vanAlbada2},
+		{"vanLeer",    &vanLeerLim}
+    };
+    return limiter_map;
+}
+
+std::map<std::string, RecLimiterFunction> get_rec_limiter_map() {
+	
+    std::map<std::string, RecLimiterFunction> limiter_map = {
+        {"superbee",   &superbee}, 
+		{"minmod",     &minmod}, // Часто называют просто minmod
 		{"vanLeer",    &vanLeer}
     };
     return limiter_map;
@@ -214,6 +225,7 @@ void printProgressTree(double t, double t_max) {
 void InitMaps(std::vector<std::string> methods, std::vector<std::string> solvers, DataArray W_0,
 	      	  std::map<std::string, std::string>& Solver_Map,
 			  std::map<std::string, std::string>& TimeIntergation_Map,
+			  std::map<std::string, std::string>& RecLimiters_ByMethods,
 	      	  std::map<std::string, DataArray>& W_map,
       	      std::map<std::string, DataArray>& W_new_map,
 	      	  std::map<std::string, DataArray>& W_b_map,
@@ -222,11 +234,17 @@ void InitMaps(std::vector<std::string> methods, std::vector<std::string> solvers
 	const size_t Central_num = N + 2 * fict - 1;
     const size_t Bound_num = N + 2 * fict;
 	
-	size_t i = 0;
+	size_t i = 0, k = 0;
 	for (const std::string& method_name : methods) {
-        
+
         std::cout << "Инициализация массивов для метода: " << method_name << std::endl;
 		
+		if (method_name == "Kolgan" || method_name == "Rodionov"){
+			if (k < rec_limiters.size()) RecLimiters_ByMethods[method_name] = rec_limiters[k];
+			else RecLimiters_ByMethods[method_name] = "minmod";
+			k++;
+		} else RecLimiters_ByMethods[method_name] = "minmod";
+
 		Solver_Map[method_name] = solvers[i];
 		TimeIntergation_Map[method_name] = time_methods[i];
 		i++;
@@ -277,8 +295,9 @@ int main() {
 	std::map<std::string, DataArray> W_b_ByMethods;
 	std::map<std::string, DataArray> F_ByMethods;
 	std::map<std::string, std::string> Solver_ByMethods;
-	std::map<std::string, std::string> TimeIntergation_ByMethods;	
-	InitMaps(methods, solvers, W_0, Solver_ByMethods, TimeIntergation_ByMethods,
+	std::map<std::string, std::string> TimeIntergation_ByMethods;
+	std::map<std::string, std::string> RecLimiters_ByMethods;
+	InitMaps(methods, solvers, W_0, Solver_ByMethods, TimeIntergation_ByMethods, RecLimiters_ByMethods,
 		 W_ByMethods, W_new_ByMethods, W_b_ByMethods, F_ByMethods);
 
 	
@@ -349,8 +368,9 @@ int main() {
 		//printProgressTree(t, t_max);
 		printProgressBar(t, t_max);
 		LimiterFunction selected_limiter = get_limiter_map().at(TVD_limiter);
+		
 		for (std::string& method_name : methods) {
-			
+			RecLimiterFunction selected_Reclimiter = get_rec_limiter_map().at(RecLimiters_ByMethods[method_name]);
 			UpdateArrays(W_ByMethods[method_name], 
 
 				     	 W_new_ByMethods[method_name], 
@@ -361,7 +381,7 @@ int main() {
 						 Solver_ByMethods[method_name], 
 						 TVD_solver,
 						 selected_limiter,
-
+						 selected_Reclimiter,
 
 						 Viscous_flag, 
 				     	 TimeIntergation_ByMethods[method_name], x, dt_common);
