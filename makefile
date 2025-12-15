@@ -2,7 +2,7 @@ CC = g++
 CFLAGS = -g -c -Wall
 LDFLAGS =
 SRCDIR = src
-OBJDIR = build
+OBJDIR = obj
 EXECUTABLE = test
 
 # Находим все .cpp файлы в src/

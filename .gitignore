@@ -6,6 +6,8 @@ output/
 build/
 obj/
 
+./test
+
 # compiled binaries
 *.o
 *.so

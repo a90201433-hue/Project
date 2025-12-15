@@ -27,7 +27,7 @@ double ospre(double r);
 
 double smart(double r);
 
-double superbee(double r);
+double superbeeLim(double r);
 
 double Sweby(double r);
 
@@ -37,6 +37,6 @@ double vanAlbada1(double r);
 
 double vanAlbada2(double r);
 
-double vanLeer(double r);
+double vanLeerLim(double r);
 
 #endif

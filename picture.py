@@ -11,7 +11,7 @@ METHOD_STYLES = {
     'Kolgan': {'color': 'red', 'linestyle': '-', 'label': 'Godunov-Kolgan'},
     'ENO': {'color': 'purple', 'linestyle': '-', 'label': 'ENO'},
     'WENO': {'color': 'green', 'linestyle': '-', 'label': 'WENO'},
-    'Rodionov': {'color': 'cyan', 'linestyle': '-', 'label': 'Godunov-Kolgan-Rodionov'},
+    'Rodionov': {'color': 'dodgerblue', 'linestyle': '-', 'label': 'Godunov-Kolgan-Rodionov'},
     'Riemann': {'color': 'black', 'linestyle': '-.', 'label': 'Analytical'},
     # Стиль для TVD
     'TVD': {'color': 'navy', 'linestyle': '-', 'label': 'TVD'}

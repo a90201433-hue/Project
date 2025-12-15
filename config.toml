@@ -6,7 +6,8 @@ Soda_test = "test5"
 # Параметры схемы
 [scheme]
 
-methods = ["WENO"]
+methods = ["Kolgan", "Rodionov"]
+rec_limiters = ["superbee"]
 solvers = ["Exact"]
 time_integration_methods = ["Euler"]
 
