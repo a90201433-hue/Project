@@ -1,0 +1,15 @@
+# Build
+obj/
+*.o
+*.out
+test
+
+# Generated output
+2d/output/
+1d/output/
+
+# Data
+*.csv
+*.png
+*.dat
+
