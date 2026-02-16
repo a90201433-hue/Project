@@ -1,4 +1,4 @@
-# Как запускать проект
+# Запуск проекта
 
 ## 1. Сборка
 
@@ -33,7 +33,7 @@ make
 ./test config_set/<config_name>.toml
 ```
 
-После расчёта создаётся папка:
+После расчёта создадутся папки:
 
 ```
 output/<config_name>/
@@ -44,27 +44,79 @@ output/<config_name>/
 
 ---
 
-## 3. Построение графика (если расчёт уже сделан)
+## 3. Построение картинок
+
+### 1D срез
 
 ```bash
 python3 PlotSlice.py <config_name>
 ```
 
-График сохраняется в:
-
-```
-output/<config_name>/pics/Final.png
-```
-
-Если нужен срез по конкретному y:
+Срез по конкретному y:
 
 ```bash
-python3 PlotSlice.py <config_name> 0.5
+python3 PlotSlice.py <config_name> <y_value>
 ```
 
 ---
 
-## 4. Запуск всех конфигов
+### 2D тепловая карта
+
+```bash
+python3 PlotMap.py <config_name> <field>
+```
+
+`<field>` = rho | P | u | v | speed
+
+Параметры отрисовки задаются в `plot_config.json`.
+
+Можно задавать:
+- `cmap` — цветовая карта
+- `mode` — none | stream | quiver
+- `density` — плотность линий тока
+- `quiver_step` — разрежение стрелок
+- `vmin`, `vmax` — пределы цветовой шкалы
+- `logscale` — логарифмическая шкала (true/false)
+
+Настройки применяются автоматически при вызове `PlotMap.py`.
+
+---
+
+### Построить все картинки для всех конфигов
+
+Создать файл `make_pics.sh`:
+
+```bash
+#!/bin/bash
+
+for cfg in config_set/*.toml; do
+    echo "Making pictures for $cfg"
+
+    name=$(basename "$cfg" .toml)
+
+    python3 PlotSlice.py "$name"
+
+    for field in speed P rho u v; do
+        python3 PlotMap.py "$name" "$field"
+    done
+done
+```
+
+Сделать исполняемым:
+
+```bash
+chmod +x make_pics.sh
+```
+
+Запуск:
+
+```bash
+./make_pics.sh
+```
+
+---
+
+## 4. Запуск расчёта + построение картинок
 
 Создать файл `run_all.sh`:
 
@@ -72,9 +124,17 @@ python3 PlotSlice.py <config_name> 0.5
 #!/bin/bash
 
 for cfg in config_set/*.toml; do
+    echo "Running $cfg"
+
     ./test "$cfg" || exit 1
+
     name=$(basename "$cfg" .toml)
+
     python3 PlotSlice.py "$name"
+
+    for field in speed P rho u v; do
+        python3 PlotMap.py "$name" "$field"
+    done
 done
 ```
 
@@ -89,6 +149,8 @@ chmod +x run_all.sh
 ```bash
 ./run_all.sh
 ```
+
+---
 
 ## Обычный порядок работы
 

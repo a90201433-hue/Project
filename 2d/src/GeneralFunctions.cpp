@@ -359,7 +359,7 @@ void Euler(Field& W_new,
 
 	Field F(Nx_tot + 1, std::vector<State>(Ny_tot));
 	Field G(Nx_tot,     std::vector<State>(Ny_tot + 1));
-
+	
     
 	if (method == "TVD") {/*                                      пока без TVD
 		Field F_low(N + 2 * fict, {0.0, 0.0, 0.0});
@@ -507,7 +507,7 @@ void UpdateArrays(Field& W,
 		/*RK3(W_new, W, method, solver, func, fict, N + fict - 1, x, dt, Viscous_flag);*/
 	} else {
 
-		Euler(W_new, W, method, high_order_method, solver, TVD_solver, phi, func, fict + 1, Nx + fict - 1,  fict + 1, Ny + fict - 1, x, y, dt, Viscous_flag);
+		Euler(W_new, W, method, high_order_method, solver, TVD_solver, phi, func, fict, Nx + fict - 1,  fict, Ny + fict - 1, x, y, dt, Viscous_flag);
 	}
 
     for (int i = fict; i < Nx + fict - 1; i++) {

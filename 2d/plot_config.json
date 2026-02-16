@@ -1,0 +1,23 @@
+{
+  "rho": {
+    "cmap": "viridis",
+    "mode": "none"
+  },
+  "P": {
+    "cmap": "viridis",
+    "mode": "none"
+  },
+  "speed": {
+    "cmap": "viridis",
+    "mode": "stream",
+    "density": 1.2
+  },
+  "u": {
+    "cmap": "viridis",
+    "mode": "none"
+  },
+  "v": {
+    "cmap": "viridis",
+    "mode": "none"
+  }
+}
