@@ -1,0 +1,40 @@
+# Параметры физической задачи
+[simulation]
+gamma = 1.4
+Soda_test = "test1"
+
+# Параметры схемы
+[scheme]
+
+methods = ["Rodionov", "ENO", "Kolgan"]
+rec_limiters = ["vanLeer" ]
+solvers = ["Exact"]
+time_integration_methods = ["Euler"]
+
+Diffusion = "Off"
+
+Q = 0.1
+
+Viscous = "Off"
+# Рекомендованы С1: 0.1-0.5, С2: 1.0-2.0
+C1 = 0.5
+C2 = 2.0
+
+TVD = "Off"
+High_order_method = "Kolgan"
+TVD_solver = "Exact"
+TVD_limiter = "vanAlbada1"
+
+N_x = 200
+L_x = 1.0
+
+# Граничные условия. free - свободная граница; wall - непроницаемая стена; periodic - периодические
+x_right_bound = "free"
+x_left_bound = "free"
+CFL = 0.125
+
+# Параметры записи
+[recording]
+step_fo = 10
+time_fo = 0.001
+step_max = 10000
