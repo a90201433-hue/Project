@@ -1,0 +1,45 @@
+# Параметры физической задачи
+[simulation]
+gamma = 1.4
+# Можно задавать test1..6 или custom
+Test = "test1" 
+
+# Параметры схемы
+[scheme]
+
+method = "Godunov"
+rec_limiter = "minmod"
+solver = "Exact"
+time_integration_method = "Euler"
+
+Diffusion = "Off"
+
+Q = 0.1
+
+Viscous = "Off"
+# Рекомендованы С1: 0.1-0.5, С2: 1.0-2.0
+C1 = 0.5
+C2 = 2.0
+
+TVD = "Off"
+High_order_method = "Kolgan"
+TVD_solver = "Exact"
+TVD_limiter = "vanAlbada1"
+
+N_x = 100
+N_y = 100
+L_x = 1.0
+L_y = 1.0
+
+# Граничные условия. free - свободная граница; wall - непроницаемая стена; periodic - периодические
+x_right_bound = "free"
+x_left_bound = "free"
+y_up_bound = "free"
+y_down_bound = "free"
+CFL = 0.5
+
+# Параметры записи
+[recording]
+step_fo = 100
+time_fo = 0.001
+step_max = 10000
