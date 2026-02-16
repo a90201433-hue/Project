@@ -14,20 +14,25 @@
 #include "Types.h"
 #include "FileProcessing.h"
 
+#include "FLIC.h"
+
+
 extern double gamm, Lx, Ly, C1, C2;
 extern int Nx, Ny, fict;
 
 
 //2D, по индексам, только точный решатель
 void SolveBoundProblem(Field W, 
-		       Field& W_b,
-		       Field& F,
-		       std::string solver,
-               int dir){
+
+		       		   Field& W_b,
+		    		   Field& F,
+		       		   std::string solver,
+               		   int dir) {
 	
 	if (solver == "Exact") {
 		
-        if(dir == 0){	//циклы переставляются местами, чтобы считалось полосой и только потом переходило на следующую 
+        if (dir == 0){	//циклы переставляются местами, чтобы считалось полосой и только потом переходило на следующую 
+
             for (int j = fict; j < Ny - 1 + fict; j++) {
                 for (int i = fict; i < Nx + fict; i++) {
                     NewtonForPressure(W[i - 1][j], W[i][j], W_b[i][j], 1e-6, dir);
@@ -41,7 +46,9 @@ void SolveBoundProblem(Field W,
             return;
         }
 
-        if(dir == 1) {
+
+        if (dir == 1) {
+
             for (int i = fict; i < Nx - 1 + fict; i++) {
                 for (int j = fict; j < Ny + fict; j++) {
                     NewtonForPressure(W[i][j - 1], W[i][j], W_b[i][j], 1e-6,dir);
@@ -183,6 +190,7 @@ void FindBoundValues(Field W,
 		SolveBoundProblem(W, W_b, F, solver, dir);
 		return;
 	}
+
 /*
 	else if (method == "Kolgan") {
 	
@@ -256,14 +264,14 @@ void FindBoundValues(Field W,
 }
 
 //2D
-void Streams(
-	Field W,
-	Field& F,
-    int dir) {
+
+void Streams(Field W,
+			 Field& F,
+    		 int dir) {
 
     //F.resize(Nx);
 
-    if(dir == 0){
+    if (dir == 0) {
         for (int i = fict; i < Nx + fict; i++)
         //F[i].resize(Ny);
             for (int j = fict; j < Ny - 1 + fict; j++) {
@@ -279,7 +287,9 @@ void Streams(
         }
     }
 
-    if(dir == 1){
+
+    if (dir == 1) {
+
         for (int i = fict; i < Nx - 1 + fict; i++)
         //Flux[i].resize(Ny);
             for (int j = fict; j < Ny + fict; j++) {
@@ -357,7 +367,6 @@ void Euler(Field& W_new,
 	Field F(Nx_tot + 1, std::vector<State>(Ny_tot));
 	Field G(Nx_tot,     std::vector<State>(Ny_tot + 1));
 
-    
 	if (method == "TVD") {/*                                      пока без TVD
 		Field F_low(N + 2 * fict, {0.0, 0.0, 0.0});
 		GetFluxes(W, F_low, "Godunov", TVD_solver, func, x, dt, Viscous_flag);
@@ -373,8 +382,33 @@ void Euler(Field& W_new,
 				F[i][j] = F_low[i][j] - phi(r_array[j])*(F_low[i][j] - F_high[i][j]);
 			}
 		}*/
-	}
-	else {
+
+	} else if (method == "FLIC") {
+		static bool swap = false;   // чередование направлений
+
+		Field W_tilde = W;
+		Field W_tmp = W;
+
+		double dt_half = 0.5 * dt;
+		if (!swap) {
+			FLIC_L(W, W_tilde, x, y, dt_half, 0);
+			FLIC_E(W_tilde, W_tmp, x, y, dt_half, 0);
+
+			FLIC_L(W_tmp, W_tilde, x, y, dt_half, 1);
+			FLIC_E(W_tilde, W_new, x, y, dt_half, 1);
+		} else {
+			FLIC_L(W, W_tilde, x, y, dt_half, 1);
+			FLIC_E(W_tilde, W_tmp, x, y, dt_half, 1);
+
+			FLIC_L(W_tmp, W_tilde, x, y, dt_half, 0);
+			FLIC_E(W_tilde, W_new, x, y, dt_half, 0);
+		}
+
+		swap = !swap;
+
+		return;
+
+	} else {
 		GetFluxes(W, F, method, solver, func, x, y, dt, Viscous_flag, 0);
         GetFluxes(W, G, method, solver, func, x, y, dt, Viscous_flag, 1);
 	}
@@ -453,7 +487,9 @@ void Euler(Field& W_new,
 	//SaveFieldToCSV(W_new, x, y, dt, "output/config1/W_new.csv");
 }
 
-void UpdateArrays(Field& W, Field W_new,
+
+void UpdateArrays(Field& W, 
+				  Field W_new,
 				  std::string method,
 				  std::string high_order_method,
 				  std::string solver,
@@ -479,12 +515,18 @@ void UpdateArrays(Field& W, Field W_new,
 		/*RK3(W_new, W, method, solver, func, fict, N + fict - 1, x, dt, Viscous_flag);*/
 	} else {
 
-		Euler(W_new, W, method, high_order_method, solver, TVD_solver, phi, func, fict + 1, Nx + fict - 1,  fict + 1, Ny + fict - 1, x, y, dt, Viscous_flag);
+
+		Euler(W_new, W, method, high_order_method, solver, TVD_solver, phi, func, fict, Nx + fict - 1,  fict, Ny + fict - 1, x, y, dt, Viscous_flag);
+
 	}
 
     for (int i = fict; i < Nx + fict - 1; i++) {
         for (int j = fict; j < Ny + fict - 1; j++) {
-            W[i][j] = W_new[i][j];
+
+			for (int k = 0; k < NEQ; k++) {
+				if (W_new[i][j][k] < 1e-6) W_new[i][j][k] = 0;
+			}
+			W[i][j] = W_new[i][j];
         }
     }
 }

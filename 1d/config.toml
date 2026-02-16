@@ -1,13 +1,13 @@
 # Параметры физической задачи
 [simulation]
 gamma = 1.4
-Soda_test = "test5"
+Soda_test = "test1"
 
 # Параметры схемы
 [scheme]
 
-methods = ["Kolgan", "Rodionov"]
-rec_limiters = ["superbee"]
+methods = ["Rodionov", "ENO", "Kolgan"]
+rec_limiters = ["vanLeer" ]
 solvers = ["Exact"]
 time_integration_methods = ["Euler"]
 

@@ -1,17 +1,27 @@
-# visualisation files
-CSV_files/*
+# Visualisation / generated data
+CSV_files/
 output/
+2d/output/
+1d/output/
 
-# build artifacts
+# Build directories
 build/
 obj/
 
-./test
 
-# compiled binaries
+# Executables
+test
+*.exe
+*.out
+
+# Compiled objects / libraries
 *.o
 *.so
 *.a
-*.exe
-*.out
 *.dll
+
+# Data files
+*.csv
+*.png
+*.dat
+

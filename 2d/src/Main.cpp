@@ -88,7 +88,8 @@ void GetDt(const Field& W,
 	double dt_x = dx / max_lambda_x;
     double dt_y = dy / max_lambda_y;
 
-	dt = 0.125 * std::min(dt_x, dt_y);
+	dt = CFL * std::min(dt_x, dt_y);
+
 	return;
 }
 
@@ -98,7 +99,6 @@ std::map<std::string, LimiterFunction> get_limiter_map() {
     std::map<std::string, LimiterFunction> limiter_map = {
         {"superbee",   &superbeeLim}, 
 		{"vanAlbada1", &vanAlbada1}, 
-		// Дополнительные лимитеры, которые вы предоставили:
 		{"CHARM",      &CHARM},
 		{"HCUS",       &HCUS},
 		{"HQUICK",     &HQUICK},
@@ -150,26 +150,32 @@ void printProgressBar(double t, double t_max) {
 
 int main(int argc, char* argv[]) {
 
-	if (argc < 2) {
+
+	if (argc < 1) {
         std::cerr << "Используйте: ./test <config_set_name>\n";
         return 1;
     }
-    std::string config_fir_path = argv[1];
-	std::string config_name = argv[2];
-
-	std::string config_path = config_fir_path + config_name;
-
-	fs::path DataFolder = CreateDirFromPath("output/" + config_name);
+    fs::path config_path = argv[1];
+    std::string config_name = config_path.stem().string();
 
 
-	//MoveToChache("CSV_files/ActualRes", "CSV_files/ChacheRes");
-	//ClearDirectoryContents("CSV_files/ActualRes");
+	fs::path base_output = fs::path("output") / config_name;
+
+	if (fs::exists(base_output)) {
+    	std::cout << "Очищаем папку: " << base_output << std::endl;
+    	fs::remove_all(base_output);
+	}
+
+	fs::path csv_folder = base_output / "CSV";
+	fs::path pics_folder = base_output / "pics";
+
+	fs::create_directories(csv_folder);
+	fs::create_directories(pics_folder);
+
 	
-	readConfig(config_path);
-	//std::cout << TVD_solver << std::endl;
+	readConfig(config_path.string());
 
-	// Сетка
-	//double dx = Lx / (Nx - 1);
+
 
 	std::vector<double> xc(Nx + 2 * fict - 1);
 	std::vector<double> x(Nx + 2 * fict);	
@@ -192,25 +198,31 @@ int main(int argc, char* argv[]) {
 
 	double t = 0.0, dt = 1.0;
 
-	SaveFieldToCSV(W_0, x, y, t, (DataFolder / "InitialData.csv").string());
-	std::cout << t_max;
+
+	//SaveFieldToCSV(W_0, x, y, t, (DataFolder / "InitialData.csv").string());
+	//std::cout << t_max;
+
 
 	Field W = W_0;
 	Field W_new = W_0;
 
 	int step = 0;
-	//while (t <= t_max && step <= step_max) {
-	while (step <= 10000) {
+
+	while (step <= step_max && t <= t_max) {
+
 		GetDt(W, x, y, dt);
 
 		if (t + dt > t_max) 
 			dt = t_max - t;
 		
 		t += dt;
-		UpdateArrays(W, W_new,
+
+		UpdateArrays(W, 
+					W_new,
 				    method, 
 					high_order_method, 
-					"Exact", 
+					solver, 
+
 					TVD_solver,
 					&minmodLim,
 					&minmod,
@@ -218,38 +230,27 @@ int main(int argc, char* argv[]) {
 					time_method, 
 					x, y,
 					dt);
+
+
 		BoundCond(W);
 
-		if (step % 100 == 0)
-			SaveFieldToCSV(W, x, y, t, (DataFolder).string() + "/" + std::to_string(step) + "_step.csv");
+		if (step % step_fo == 0)
+			SaveFieldToCSV(W, x, y, t,
+    			(csv_folder / (std::to_string(step) + "_step.csv")).string());
+
 		
 		if (t >= t_max) {
-			SaveFieldToCSV(W, x, y, t, (DataFolder).string() + "/" + std::to_string(step) + "_step.csv");
+			SaveFieldToCSV(W, x, y, t,
+    			(csv_folder / (std::to_string(step) + "_step.csv")).string());
+			
+			SaveFieldToCSV(W, x, y, t,
+    			(csv_folder / "Final.csv").string());
 			break;
-
 		}
+		
 		step++;
 	}
-	
-	
 
-	
-
-/*	
-	std::vector<double> W_L_riemann = {rho_L, u_L, P_L};
-	std::vector<double> W_R_riemann = {rho_R, u_R, P_R};
-	std::vector<double> W_star_riemann = {0, 0};
-	std::vector<double> W_riemann = {0, 0, 0};
-	double e_riemann;
-
-	std::map<std::string, std::ofstream> AnalysisFiles;
-    	for (const auto& method : methods) {
-        	std::string filename = "CSV_files/Analis_" + method + ".csv";
-        	AnalysisFiles[method].open(filename);
-        	// Пишем заголовок CSV
-        	AnalysisFiles[method] << "time,Ratio_rho,Ratio_v,Ratio_P" << std::endl;
-    	}
-	*/
 
 /*
 	std::vector<double> W_star_ac = {0, 0};

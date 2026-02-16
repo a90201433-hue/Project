@@ -26,8 +26,8 @@ High_order_method = "Kolgan"
 TVD_solver = "Exact"
 TVD_limiter = "vanAlbada1"
 
-N_x = 200
-N_y = 200
+N_x = 100
+N_y = 100
 L_x = 1.0
 L_y = 1.0
 
@@ -36,7 +36,7 @@ x_right_bound = "free"
 x_left_bound = "free"
 y_up_bound = "free"
 y_down_bound = "free"
-CFL = 0.125
+CFL = 0.5
 
 # Параметры записи
 [recording]

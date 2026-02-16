@@ -34,9 +34,11 @@ void readConfig(const std::string& config_path) {
 	auto& scheme = toml.root["scheme"].table;
 	
 	method = scheme["method"].str;
-	rec_limiter = scheme["method"].str;
-	solver = scheme["method"].str;
-	time_method = scheme["method"].str;
+
+	rec_limiter = scheme["rec_limiter"].str;
+	solver = scheme["solver"].str;
+	time_method = scheme["time_integration_method"].str;
+
 
 
 	Diffusion_flag = (scheme["Diffusion"].str == "On") ? true : false;

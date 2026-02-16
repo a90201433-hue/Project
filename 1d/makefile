@@ -33,6 +33,8 @@ run: $(EXECUTABLE)
 	python3 animation.py
 	python3 picture.py
 
+	python3 Err.py
+
 clean:
 	rm -rf $(OBJDIR) $(EXECUTABLE)
 

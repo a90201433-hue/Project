@@ -83,6 +83,8 @@ for ax in axs.flatten():
     ax.grid(True, alpha=0.5)
 
 plt.tight_layout(rect=[0, 0, 0.85, 1])
-plt.savefig(f'output/picture.png', bbox_inches='tight', dpi=300, transparent=False)
+
+plt.savefig(f'output/Analysis.png', bbox_inches='tight', dpi=300, transparent=False)
+
 plt.show()
 
