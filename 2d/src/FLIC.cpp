@@ -22,10 +22,10 @@ void FLIC_L(Field W,
                 double rho = W[i][j][0];
                 double u = W[i][j][1];
                 double v = W[i][j][2];
-                double P = W[i][j][3];
+                double P = W[i][j][NEQ - 1];
 
-                double P_ip = 0.5 * (W[i][j][3] + W[i + 1][j][3]);
-                double P_im = 0.5 * (W[i - 1][j][3] + W[i][j][3]);
+                double P_ip = 0.5 * (W[i][j][NEQ - 1] + W[i + 1][j][NEQ - 1]);
+                double P_im = 0.5 * (W[i - 1][j][NEQ - 1] + W[i][j][NEQ - 1]);
 
                 W_tilde[i][j][0] = rho;
 
@@ -37,10 +37,11 @@ void FLIC_L(Field W,
                 double E = P / (gamm - 1.0) + 0.5 * rho * (u * u + v * v);
                 double u_ip = 0.5 * (W[i][j][1] + W[i + 1][j][1]);
                 double u_im = 0.5 * (W[i - 1][j][1] + W[i][j][1]);
-                double E_tilde = E - dt / rho * (P_ip * u_ip - P_im * u_im) / dx;
+                double E_tilde = E - dt * (P_ip * u_ip - P_im * u_im) / dx;
                 double kinetic_tilde = 0.5 * rho * (u_tilde * u_tilde + v * v);
                 double P_tilde = (gamm - 1.0) * (E_tilde - kinetic_tilde);
-                W_tilde[i][j][3] = std::max(1e-8, P_tilde);
+        
+                W_tilde[i][j][NEQ - 1] = std::max(1e-8, P_tilde);
             }
         }
     }
@@ -53,10 +54,10 @@ void FLIC_L(Field W,
                 double rho = W[i][j][0];
                 double u = W[i][j][1];
                 double v = W[i][j][2];
-                double P = W[i][j][3];
+                double P = W[i][j][NEQ - 1];
 
-                double P_jp = 0.5 * (W[i][j][3] + W[i][j + 1][3]);
-                double P_jm = 0.5 * (W[i][j - 1][3] + W[i][j][3]);
+                double P_jp = 0.5 * (W[i][j][NEQ - 1] + W[i][j + 1][NEQ - 1]);
+                double P_jm = 0.5 * (W[i][j - 1][NEQ - 1] + W[i][j][NEQ - 1]);
 
                 W_tilde[i][j][0] = rho;
 
@@ -68,10 +69,11 @@ void FLIC_L(Field W,
                 double E = P / (gamm - 1.0) + 0.5 * rho * (u * u + v * v);
                 double v_jp = 0.5 * (W[i][j][2] + W[i][j + 1][2]);
                 double v_jm = 0.5 * (W[i][j - 1][2] + W[i][j][2]);
-                double E_tilde = E - (0.5 * dt) / rho * (P_jp * v_jp - P_jm * v_jm) / dy;
+                double E_tilde = E - dt  * (P_jp * v_jp - P_jm * v_jm) / dy;
                 double kinetic_tilde = 0.5 * rho * (u * u + v_tilde * v_tilde);
                 double P_tilde = (gamm - 1.0) * (E_tilde - kinetic_tilde);
-                W_tilde[i][j][3] = std::max(1e-8, P_tilde);
+
+                W_tilde[i][j][NEQ - 1] = std::max(1e-8, P_tilde);
             }
         }
     }
@@ -98,7 +100,9 @@ void FLIC_E(Field W_tilde,
                 double momx_flux = rho_flux * W_tilde[up][j][1];
                 double momy_flux = rho_flux * W_tilde[up][j][2];
 
-                double E = W_tilde[up][j][3] / (gamm - 1.0) + 0.5 * W_tilde[up][j][0] * (W_tilde[up][j][1]*W_tilde[up][j][1] + W_tilde[up][j][2] * W_tilde[up][j][2]);
+                double E = W_tilde[up][j][NEQ - 1] / (gamm - 1.0) + 
+                            0.5 * W_tilde[up][j][0] * 
+                            (W_tilde[up][j][1]*W_tilde[up][j][1] + W_tilde[up][j][2] * W_tilde[up][j][2]);
 
                 double E_flux = W_tilde[up][j][1] * E;
 
@@ -111,7 +115,7 @@ void FLIC_E(Field W_tilde,
                 double momx_flux_m = rho_flux_m * W_tilde[up_m][j][1];
                 double momy_flux_m = rho_flux_m * W_tilde[up_m][j][2];
 
-                double E_m = W_tilde[up_m][j][3] / (gamm - 1.0) + 0.5 * W_tilde[up_m][j][0] * (W_tilde[up_m][j][1]*W_tilde[up_m][j][1] + W_tilde[up_m][j][2]*W_tilde[up_m][j][2]);
+                double E_m = W_tilde[up_m][j][NEQ - 1] / (gamm - 1.0) + 0.5 * W_tilde[up_m][j][0] * (W_tilde[up_m][j][1]*W_tilde[up_m][j][1] + W_tilde[up_m][j][2]*W_tilde[up_m][j][2]);
 
                 double E_flux_m = W_tilde[up_m][j][1] * E_m;
 
@@ -122,7 +126,7 @@ void FLIC_E(Field W_tilde,
 
                 double momy_new = W_tilde[i][j][0] * W_tilde[i][j][2] - dt/dx * (momy_flux - momy_flux_m);
 
-                double E_new = (W_tilde[i][j][3] / (gamm - 1.0) + 0.5 * W_tilde[i][j][0] * (W_tilde[i][j][1]*W_tilde[i][j][1] + W_tilde[i][j][2]*W_tilde[i][j][2])) - dt/dx * (E_flux - E_flux_m);
+                double E_new = (W_tilde[i][j][NEQ - 1] / (gamm - 1.0) + 0.5 * W_tilde[i][j][0] * (W_tilde[i][j][1]*W_tilde[i][j][1] + W_tilde[i][j][2]*W_tilde[i][j][2])) - dt/dx * (E_flux - E_flux_m);
 
                 rho_new = std::max(1e-8, rho_new);
 
