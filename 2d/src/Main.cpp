@@ -39,22 +39,6 @@ void GetDt(const Field& W,
 		   const std::vector<double>& y, 
 		   double& dt) {
 	
-	/*
-	double c = 0, dx = Lx, u = 0;
-	double c_temp;
-
-	for (int i = fict; i < Nx + fict; i++){
-		c_temp = std::sqrt(gamm * std::max(1e-7, W[i][2]) / std::max(1e-7, W[i][0]));
-		if (c_temp > c) 
-			c = c_temp;
-		if (std::abs(W[i][1]) > u)
-			u = std::abs(W[i][1]);
-		if ((x[i + 1] - x[i]) < dx)
-			dx = x[i + 1] - x[i];
-	}
-
-	dt = CFL * dx/(c + u);
-	return;*/
 	double dx = Lx / (Nx - 1);
 	double dy = Ly / (Ny - 1);
 
@@ -143,13 +127,9 @@ void printProgressBar(double t, double t_max) {
     int percent = static_cast<int>((t / t_max) * 100);
     std::cout << " " << percent << "%";
     std::cout.flush();
-}
-
-
-*/
+} */
 
 int main(int argc, char* argv[]) {
-
 
 	if (argc < 1) {
         std::cerr << "Используйте: ./test <config_set_name>\n";
@@ -172,10 +152,7 @@ int main(int argc, char* argv[]) {
 	fs::create_directories(csv_folder);
 	fs::create_directories(pics_folder);
 
-	
 	readConfig(config_path.string());
-
-
 
 	std::vector<double> xc(Nx + 2 * fict - 1);
 	std::vector<double> x(Nx + 2 * fict);	
@@ -198,11 +175,6 @@ int main(int argc, char* argv[]) {
 
 	double t = 0.0, dt = 1.0;
 
-
-	//SaveFieldToCSV(W_0, x, y, t, (DataFolder / "InitialData.csv").string());
-	//std::cout << t_max;
-
-
 	Field W = W_0;
 	Field W_new = W_0;
 
@@ -219,15 +191,8 @@ int main(int argc, char* argv[]) {
 
 		UpdateArrays(W, 
 					W_new,
-				    method, 
-					high_order_method, 
-					solver, 
-
-					TVD_solver,
 					&minmodLim,
 					&minmod,
-					Viscous_flag, 
-					time_method, 
 					x, y,
 					dt);
 

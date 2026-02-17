@@ -20,13 +20,14 @@
 extern double gamm, Lx, Ly, C1, C2;
 extern int Nx, Ny, fict;
 
+extern std::string method, solver, time_method;
+extern std::string high_order_method, TVD_solver;
+extern bool Viscous_flag, TVD_flag;
 
 //2D, по индексам, только точный решатель
 void SolveBoundProblem(Field W, 
-
 		       		   Field& W_b,
 		    		   Field& F,
-		       		   std::string solver,
                		   int dir) {
 	
 	if (solver == "Exact") {
@@ -170,8 +171,6 @@ void FindBoundValues(Field W,
                      std::vector<double> x,
 					 std::vector<double> y,
 					 double dt,
-					 std::string method,
-					 std::string solver,
 					 RecLimiterFunction func,
                      int dir) {
 
@@ -187,7 +186,7 @@ void FindBoundValues(Field W,
 	
 
 	if (method == "Godunov") {
-		SolveBoundProblem(W, W_b, F, solver, dir);
+		SolveBoundProblem(W, W_b, F, dir);
 		return;
 	}
 
@@ -309,13 +308,10 @@ void Streams(Field W,
 void GetFluxes(// закомментил блок WENO и вязкости
 	Field W,
 	Field& F,
-	std::string method,
-	std::string solver,
 	RecLimiterFunction func,
 	std::vector<double> x,
     std::vector<double> y,
 	double dt, 
-	bool Viscous_flag,
     int dir) {
 		
 	if (method == "WENO") {/*
@@ -330,7 +326,7 @@ void GetFluxes(// закомментил блок WENO и вязкости
 	} else {
 
 		Field W_b(Nx + 2*fict, std::vector<State>(Ny + 2*fict));
-		FindBoundValues(W, W_b, F, x, y, dt, method, solver, func, dir);
+		FindBoundValues(W, W_b, F, x, y, dt, func, dir);
 
 		if (solver == "Exact"){
 			Streams(W_b, F, dir);
@@ -347,10 +343,6 @@ void GetFluxes(// закомментил блок WENO и вязкости
 
 void Euler(Field& W_new, 
 			Field W, 
-    		std::string method, 
-			std::string high_order_method,
-			std::string solver,
-			std::string TVD_solver,
 			LimiterFunction phi,
 			RecLimiterFunction func,
 			int init_idx_x, 
@@ -359,7 +351,7 @@ void Euler(Field& W_new,
 			int end_idx_y, 
 			std::vector<double> x, 
 			std::vector<double> y, 
-			double dt, bool Viscous_flag) {
+			double dt) {
 				
 	size_t Nx_tot = Nx + 2*fict - 1;
 	size_t Ny_tot = Ny + 2*fict - 1;
@@ -409,8 +401,8 @@ void Euler(Field& W_new,
 		return;
 
 	} else {
-		GetFluxes(W, F, method, solver, func, x, y, dt, Viscous_flag, 0);
-        GetFluxes(W, G, method, solver, func, x, y, dt, Viscous_flag, 1);
+		GetFluxes(W, F, func, x, y, dt, 0);
+        GetFluxes(W, G, func, x, y, dt, 1);
 	}
 
 	Field U(Nx_tot, std::vector<State>(Ny_tot));
@@ -490,14 +482,8 @@ void Euler(Field& W_new,
 
 void UpdateArrays(Field& W, 
 				  Field W_new,
-				  std::string method,
-				  std::string high_order_method,
-				  std::string solver,
-				  std::string TVD_solver,
 				  LimiterFunction phi,
 				  RecLimiterFunction func,
-				  bool Viscous_flag,
-				  std::string time_method,
 				  std::vector<double> x, 
 				  std::vector<double> y,
 				  double dt) {
@@ -506,7 +492,7 @@ void UpdateArrays(Field& W,
 	//std::vector<std::vector<double>> W_R(N + 2 * fict);
 
 	if (method == "MacCORMACK") {/* //БЕЗ МАККОРМАКА!!!
-		MacCORMACK(W, W_new, x, Viscous_flag, dt, solver);
+		MacCORMACK(W, W_new, x, dt, solver);
 		return;*/
 	}
 	
@@ -516,7 +502,7 @@ void UpdateArrays(Field& W,
 	} else {
 
 
-		Euler(W_new, W, method, high_order_method, solver, TVD_solver, phi, func, fict, Nx + fict - 1,  fict, Ny + fict - 1, x, y, dt, Viscous_flag);
+		Euler(W_new, W, phi, func, fict, Nx + fict - 1,  fict, Ny + fict - 1, x, y, dt);
 
 	}
 

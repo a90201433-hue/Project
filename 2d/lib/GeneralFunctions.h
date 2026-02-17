@@ -11,7 +11,6 @@
 void SolveBoundProblem(Field W, 
 		       		   Field& W_b,
 		       		   Field& F,
-		       	       std::string solver,
                		   int dir);
 
 
@@ -21,8 +20,6 @@ void FindBoundValues(Field W,
                      std::vector<double> x,
 					 std::vector<double> y,
 					 double dt,
-					 std::string method,
-					 std::string solver,
 					 RecLimiterFunction func,
                      int dir);
 
@@ -34,21 +31,14 @@ void Streams(Field W,
 // закомментил блок WENO и вязкости
 void GetFluxes(Field W,
 			   Field& F,
-			   std::string method,
-			   std::string solver,
 			   RecLimiterFunction func,
 			   std::vector<double> x,
     		   std::vector<double> y,
 			   double dt, 
-			   bool Viscous_flag,
     		   int dir);
 
 void Euler(Field& W_new, 
 		   Field W, 
-    	   std::string method, 
-		   std::string high_order_method,
-		   std::string solver,
-		   std::string TVD_solver,
 		   LimiterFunction phi,
 		   RecLimiterFunction func,
 		   int init_idx_x, 
@@ -57,19 +47,12 @@ void Euler(Field& W_new,
 		   int end_idx_y, 
 		   std::vector<double> x, 
     	   std::vector<double> y, 
-		   double dt, 
-		   bool Viscous_flag);
+		   double dt);
 
 void UpdateArrays(Field& W, 
 				  Field W_new,
-				  std::string method,
-				  std::string high_order_method,
-				  std::string solver,
-				  std::string TVD_solver,
 				  LimiterFunction phi,
 				  RecLimiterFunction func,
-				  bool Viscous_flag,
-				  std::string time_method,
 				  std::vector<double> x, 
 				  std::vector<double> y,
 				  double dt);
