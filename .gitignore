@@ -11,7 +11,8 @@ obj/
 
 
 # Executables
-test
+2d/test
+1d/test
 *.exe
 *.out
 
