@@ -196,6 +196,43 @@ void FLIC_E(Field W_tilde,
     }
 }
 
+void FLIC(Field& W_new, 
+		  const Field& W,
+          const std::vector<double>& x, 
+		  const std::vector<double>& y, 
+		  double dt) {
+    static bool swap = false;   // чередование направлений
 
+		Field W_tilde = W;
+		Field W_tmp = W;
+		Field W_tmp_2 = W;
+
+		double dt_half = 0.5 * dt;
+
+		if (!swap) {
+			FLIC_L(W, W_tilde, x, y, dt_half, 0);
+			FLIC_E(W_tilde, W_tmp, x, y, dt_half, 0);
+
+			FLIC_L(W_tmp, W_tilde, x, y, dt, 1);
+			FLIC_E(W_tilde, W_tmp_2, x, y, dt, 1);
+
+			FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 0);
+			FLIC_E(W_tilde, W_new, x, y, dt_half, 0);
+
+		} else {
+			FLIC_L(W, W_tilde, x, y, dt_half, 1);
+			FLIC_E(W_tilde, W_tmp, x, y, dt_half, 1);
+
+			FLIC_L(W_tmp, W_tilde, x, y, dt, 0);
+			FLIC_E(W_tilde, W_tmp_2, x, y, dt, 0);
+
+			FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 1);
+			FLIC_E(W_tilde, W_new, x, y, dt_half, 1);
+		}
+
+		swap = !swap;
+
+		return;
+}
 
 

@@ -375,7 +375,7 @@ void Euler(Field& W_new,
 			}
 		}*/
 
-	} else if (method == "FLIC") {
+	} /*else if (method == "FLIC") {
 		static bool swap = false;   // чередование направлений
 
 		Field W_tilde = W;
@@ -407,8 +407,9 @@ void Euler(Field& W_new,
 		swap = !swap;
 
 		return;
-
-	} else {
+	
+	} */ 
+	else {
 		GetFluxes(W, F, func, x, y, dt, 0);
         GetFluxes(W, G, func, x, y, dt, 1);
 	}
@@ -438,14 +439,15 @@ void Euler(Field& W_new,
 							- dt/dy * (G[i][j + 1][1] - G[i][j][1]);  
 
 			W_new[i][j][1] = mom_x_new / W_new[i][j][0];
+			if (W_new[i][j][1] < 1e-9) W_new[i][j][1] = 0.0;
 
-			double mom_y_new =
-				W[i][j][0] * W[i][j][2]
+			double mom_y_new = W[i][j][0] * W[i][j][2]
 				- dt/dx * (F[i + 1][j][2] - F[i][j][2])
 				- dt/dy * (G[i][j + 1][2] - G[i][j][2]);
 
 			W_new[i][j][2] = mom_y_new / W_new[i][j][0];
-
+			if (W_new[i][j][2] < 1e-9) W_new[i][j][2] = 0.0;
+			
 			double E_old =
 					W[i][j][3] / (gamm - 1.0)
 					+ 0.5 * W[i][j][0] *
@@ -464,7 +466,7 @@ void Euler(Field& W_new,
 			double P_new =
 					(gamm - 1.0) * (E_new - kinetic_new);
 
-			W_new[i][j][3] = std::max(1e-7, P_new);
+			W_new[i][j][NEQ - 1] = std::max(1e-6, P_new);
 
 		}
 
@@ -498,28 +500,25 @@ void UpdateArrays(Field& W,
 
 	//std::vector<std::vector<double>> W_L(N + 2 * fict);
 	//std::vector<std::vector<double>> W_R(N + 2 * fict);
-
-	if (method == "MacCORMACK") {/* //БЕЗ МАККОРМАКА!!!
+	if (method == "FLIC") FLIC(W_new, W, x, y, dt);
+	else if (method == "MacCORMACK") {/* //БЕЗ МАККОРМАКА!!!
 		MacCORMACK(W, W_new, x, dt, solver);
 		return;*/
-	}
-	
+	} 
+
 	// Для остальных методов
-	if (time_method == "RK3") {// БЕЗ РК3!!!
+	else if (time_method == "RK3") {// БЕЗ РК3!!!
 		/*RK3(W_new, W, method, solver, func, fict, N + fict - 1, x, dt, Viscous_flag);*/
 	} else {
-
-
 		Euler(W_new, W, phi, func, fict, Nx + fict - 1,  fict, Ny + fict - 1, x, y, dt);
-
 	}
 
     for (int i = fict; i < Nx + fict - 1; i++) {
         for (int j = fict; j < Ny + fict - 1; j++) {
 
-			for (int k = 0; k < NEQ; k++) {
+			/*for (int k = 0; k < NEQ; k++) {
 				if (W_new[i][j][k] < 1e-6) W_new[i][j][k] = 0;
-			}
+			}*/
 			W[i][j] = W_new[i][j];
         }
     }

@@ -18,4 +18,10 @@ void FLIC_E(Field W_tilde,
             double dt,
             int dir);
 
+void FLIC(Field& W_new, 
+		  const Field& W,
+          const std::vector<double>& x, 
+		  const std::vector<double>& y, 
+		  double dt);
+
 #endif
