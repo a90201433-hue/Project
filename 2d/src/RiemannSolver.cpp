@@ -298,7 +298,7 @@ State GetParamsFromChoosingWave(State W_L, State W_R, State W_star, double x, do
 	}
 	
 	// Without vacuum
-	if ((x / t) <= u_star) // Left area 
+	else if ((x / t) <= u_star) // Left area 
 	{
 		if (P_star > P_L) // Left shock
 		{

@@ -57,7 +57,7 @@ void SolveBoundProblem(Field W,
             }
             for (int i = fict; i < Nx - 1 + fict; i++) {
                 for (int j = fict; j < Ny + fict; j++) {
-                	W_b[i][j] = GetParamsFromChoosingWave(W[i][j - 1], W[i][j], W_b[i][j], 0.0, 1.0,dir);
+                	W_b[i][j] = GetParamsFromChoosingWave(W[i][j - 1], W[i][j], W_b[i][j], 0.0, 1.0, dir);
                 }
             }
             return;
@@ -375,41 +375,7 @@ void Euler(Field& W_new,
 			}
 		}*/
 
-	} /*else if (method == "FLIC") {
-		static bool swap = false;   // чередование направлений
-
-		Field W_tilde = W;
-		Field W_tmp = W;
-		Field W_tmp_2 = W;
-
-		double dt_half = 0.5 * dt;
-		if (!swap) {
-			FLIC_L(W, W_tilde, x, y, dt_half, 0);
-			FLIC_E(W_tilde, W_tmp, x, y, dt_half, 0);
-
-			FLIC_L(W_tmp, W_tilde, x, y, dt, 1);
-			FLIC_E(W_tilde, W_tmp_2, x, y, dt, 1);
-
-			FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 0);
-			FLIC_E(W_tilde, W_new, x, y, dt_half, 0);
-
-		} else {
-			FLIC_L(W, W_tilde, x, y, dt_half, 1);
-			FLIC_E(W_tilde, W_tmp, x, y, dt_half, 1);
-
-			FLIC_L(W_tmp, W_tilde, x, y, dt, 0);
-			FLIC_E(W_tilde, W_tmp_2, x, y, dt, 0);
-
-			FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 1);
-			FLIC_E(W_tilde, W_new, x, y, dt_half, 1);
-		}
-
-		swap = !swap;
-
-		return;
-	
-	} */ 
-	else {
+	} else {
 		GetFluxes(W, F, func, x, y, dt, 0);
         GetFluxes(W, G, func, x, y, dt, 1);
 	}
@@ -439,14 +405,14 @@ void Euler(Field& W_new,
 							- dt/dy * (G[i][j + 1][1] - G[i][j][1]);  
 
 			W_new[i][j][1] = mom_x_new / W_new[i][j][0];
-			if (W_new[i][j][1] < 1e-9) W_new[i][j][1] = 0.0;
+			if (std::abs(W_new[i][j][1]) < 1e-9) W_new[i][j][1] = 0.0;
 
 			double mom_y_new = W[i][j][0] * W[i][j][2]
 				- dt/dx * (F[i + 1][j][2] - F[i][j][2])
 				- dt/dy * (G[i][j + 1][2] - G[i][j][2]);
 
 			W_new[i][j][2] = mom_y_new / W_new[i][j][0];
-			if (W_new[i][j][2] < 1e-9) W_new[i][j][2] = 0.0;
+			if (std::abs(W_new[i][j][2]) < 1e-9) W_new[i][j][2] = 0.0;
 			
 			double E_old =
 					W[i][j][3] / (gamm - 1.0)

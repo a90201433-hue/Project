@@ -1,16 +1,18 @@
 #include <cmath>
 #include <vector>
+#include <iostream>
 #include "FLIC.h"
+#include "BoundCond.h"
 #include "Init.h"
 #include "Types.h"
 
 extern double gamm, Lx, Ly, C1, C2;
 extern int Nx, Ny, fict;
 
-void FLIC_L(Field W,
+void FLIC_L(const Field& W,
             Field& W_tilde,
-            std::vector<double> x,
-            std::vector<double> y,
+            const std::vector<double>& x,
+            const std::vector<double>& y,
             double dt,
             int dir) {
 
@@ -32,7 +34,7 @@ void FLIC_L(Field W,
                 double u_tilde = u - dt / rho * (P_ip - P_im) / dx;
                 W_tilde[i][j][1] = u_tilde;
 
-                W_tilde[i][j][2] = v;
+                W_tilde[i][j][2] = v; 
 
                 double E = P / (gamm - 1.0) + 0.5 * rho * (u * u + v * v);
                 double u_ip = 0.5 * (W[i][j][1] + W[i + 1][j][1]);
@@ -60,16 +62,22 @@ void FLIC_L(Field W,
                 double P_jm = 0.5 * (W[i][j - 1][NEQ - 1] + W[i][j][NEQ - 1]);
 
                 W_tilde[i][j][0] = rho;
-
                 W_tilde[i][j][1] = u;
 
-                double v_tilde = v - dt / rho * (P_jp - P_jm) / dy;
+                double dPdy = (P_jp - P_jm) / dy;
+                if (dPdy < 1e-14) dPdy = 0.0;
+                double v_tilde = v - dt / rho * dPdy;
+
                 W_tilde[i][j][2] = v_tilde;
 
                 double E = P / (gamm - 1.0) + 0.5 * rho * (u * u + v * v);
                 double v_jp = 0.5 * (W[i][j][2] + W[i][j + 1][2]);
                 double v_jm = 0.5 * (W[i][j - 1][2] + W[i][j][2]);
-                double E_tilde = E - dt  * (P_jp * v_jp - P_jm * v_jm) / dy;
+
+                double dPVdy = (P_jp * v_jp - P_jm * v_jm) / dy;
+                if (std::abs(dPVdy) < 1e-14) dPVdy = 0.0;
+                
+                double E_tilde = E - dt  * dPVdy;
                 double kinetic_tilde = 0.5 * rho * (u * u + v_tilde * v_tilde);
                 double P_tilde = (gamm - 1.0) * (E_tilde - kinetic_tilde);
 
@@ -79,10 +87,10 @@ void FLIC_L(Field W,
     }
 }
 
-void FLIC_E(Field W_tilde,
+void FLIC_E(const Field& W_tilde,
             Field& W_new,
-            std::vector<double> x,
-            std::vector<double> y,
+            const std::vector<double>& x,
+            const std::vector<double>& y,
             double dt,
             int dir) {
 
@@ -108,7 +116,6 @@ void FLIC_E(Field W_tilde,
 
                 // аналогично для i-1/2 
                 double u_face_m = 0.5 * (W_tilde[i - 1][j][1] + W_tilde[i][j][1]);
-
                 int up_m = (u_face_m > 0.0) ? i-1 : i;
 
                 double rho_flux_m  = W_tilde[up_m][j][0] * W_tilde[up_m][j][1];
@@ -140,6 +147,7 @@ void FLIC_E(Field W_tilde,
                 W_new[i][j][1] = u_new;
                 W_new[i][j][2] = v_new;
                 W_new[i][j][3] = std::max(1e-8, P_new);
+                
             }
         }
     }
@@ -188,6 +196,10 @@ void FLIC_E(Field W_tilde,
                 double P_new = (gamm - 1.0) * (E_new - kinetic);
 
                 W_new[i][j][0] = rho_new;
+                if (std::abs(u_new) < 1e-9)
+                    u_new = 0.0;
+                if (std::abs(v_new) < 1e-9)
+                    v_new = 0.0;
                 W_new[i][j][1] = u_new;
                 W_new[i][j][2] = v_new;
                 W_new[i][j][3] = std::max(1e-8, P_new);
@@ -201,38 +213,73 @@ void FLIC(Field& W_new,
           const std::vector<double>& x, 
 		  const std::vector<double>& y, 
 		  double dt) {
+
     static bool swap = false;   // чередование направлений
+     
+    Field W_tilde = W;
+    Field W_tmp = W;
+    Field W_tmp_2 = W;
 
-		Field W_tilde = W;
-		Field W_tmp = W;
-		Field W_tmp_2 = W;
+    double dt_half = 0.5 * dt;
 
-		double dt_half = 0.5 * dt;
+    // По поводу swap - я не заметила, чтобы он что-то менял. Шо с ним, шо без него работает
+    /*FLIC_L(W, W_tilde, x, y, dt_half, 0);
+    BoundCond(W_tilde);
+    FLIC_E(W_tilde, W_tmp, x, y, dt_half, 0);
+    BoundCond(W_tmp);
 
-		if (!swap) {
-			FLIC_L(W, W_tilde, x, y, dt_half, 0);
-			FLIC_E(W_tilde, W_tmp, x, y, dt_half, 0);
+    FLIC_L(W_tmp, W_tilde, x, y, dt, 1);
+    BoundCond(W_tilde);
+    FLIC_E(W_tilde, W_tmp_2, x, y, dt, 1);
+    BoundCond(W_tmp_2);
 
-			FLIC_L(W_tmp, W_tilde, x, y, dt, 1);
-			FLIC_E(W_tilde, W_tmp_2, x, y, dt, 1);
+    FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 0);
+    BoundCond(W_tilde);
+    FLIC_E(W_tilde, W_new, x, y, dt_half, 0);
+    BoundCond(W_tmp_2);*/
 
-			FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 0);
-			FLIC_E(W_tilde, W_new, x, y, dt_half, 0);
+    if (!swap) {
+        FLIC_L(W, W_tilde, x, y, dt_half, 0);
+        BoundCond(W_tilde);
+        FLIC_E(W_tilde, W_tmp, x, y, dt_half, 0);
+        BoundCond(W_tmp);
 
-		} else {
-			FLIC_L(W, W_tilde, x, y, dt_half, 1);
-			FLIC_E(W_tilde, W_tmp, x, y, dt_half, 1);
+        FLIC_L(W_tmp, W_tilde, x, y, dt, 1);
+        BoundCond(W_tilde);
+        FLIC_E(W_tilde, W_tmp_2, x, y, dt, 1);
+        BoundCond(W_tmp_2);
 
-			FLIC_L(W_tmp, W_tilde, x, y, dt, 0);
-			FLIC_E(W_tilde, W_tmp_2, x, y, dt, 0);
+        FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 0);
+        BoundCond(W_tilde);
+        FLIC_E(W_tilde, W_new, x, y, dt_half, 0);
+        BoundCond(W_new);
 
-			FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 1);
-			FLIC_E(W_tilde, W_new, x, y, dt_half, 1);
-		}
+    } else {
+        FLIC_L(W, W_tilde, x, y, dt_half, 1);
+        BoundCond(W_tilde);
+        FLIC_E(W_tilde, W_tmp, x, y, dt_half, 1);
+        BoundCond(W_tmp);
 
-		swap = !swap;
+        FLIC_L(W_tmp, W_tilde, x, y, dt, 0);
+        BoundCond(W_tilde);
+        FLIC_E(W_tilde, W_tmp_2, x, y, dt, 0);
+        BoundCond(W_tmp_2);
 
-		return;
+        FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 1);
+        BoundCond(W_tilde);
+        FLIC_E(W_tilde, W_new, x, y, dt_half, 1);
+        BoundCond(W_new);            
+    }
+
+    for (int i = fict; i < Nx + fict - 1; i++) {
+        for (int j = fict; j < Ny + fict - 1; j++) {
+            if (std::abs(W_new[i][j][1]) < 1e-9) W_new[i][j][1] = 0.0;
+            if (std::abs(W_new[i][j][2]) < 1e-9) W_new[i][j][2] = 0.0;
+        }
+    }
+
+    swap = !swap;
+
+    return;
 }
-
 
