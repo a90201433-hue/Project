@@ -8,16 +8,16 @@
     "mode": "none"
   },
   "speed": {
-    "cmap": "viridis",
+    "cmap": "coolwarm",
     "mode": "stream",
     "density": 1.2
   },
   "u": {
-    "cmap": "viridis",
+    "cmap": "coolwarm",
     "mode": "none"
   },
   "v": {
-    "cmap": "viridis",
+    "cmap": "coolwarm",
     "mode": "none"
   }
 }

@@ -6,4 +6,5 @@ for cfg in config_set/*.toml; do
     for field in speed P rho u v; do
         python3 PlotMap.py "$name" "$field"
     done 
+    echo ""
 done
