@@ -4,6 +4,7 @@ output/
 2d/output/
 2d/config_set/
 1d/output/
+2d/data_track/
 
 # Build directories
 build/
