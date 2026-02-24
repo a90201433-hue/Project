@@ -429,6 +429,11 @@ State GetParamsFromChoosingWave(State W_L, State W_R, State W_star, double x, do
 		}
 	}
     
+	if (dir == 1) {
+		double v_tmp = W[1];
+		W[1] = W[2];
+		W[2] = v_tmp;
+	}
 	//std::cout << std::endl;
 	//std::cout << "After GetParams: " << W[0] << " " << W[1] <<  " " << W[2] << std::endl; 
     	

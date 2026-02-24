@@ -29,23 +29,32 @@ def main():
 
     if len(sys.argv) < 2:
         print("Использование:")
-        print("python3 PlotSlice.py <config_name> [y_value] [csv_name]")
+        print("python3 PlotSlice.py <config_name> [axis] [value] [csv_name]")
         return
 
     config_name = sys.argv[1]
 
-    fixed_y = None
-    csv_name = "Final.csv"   # по умолчанию
+    axis = "y"            # по умолчанию
+    fixed_value = None
+    csv_name = "Final.csv"
 
     # --- разбор аргументов ---
-    if len(sys.argv) >= 3:
-        try:
-            fixed_y = float(sys.argv[2])
-        except ValueError:
-            csv_name = sys.argv[2]
+    args = sys.argv[2:]
 
-    if len(sys.argv) >= 4:
-        csv_name = sys.argv[3]
+    if len(args) >= 1:
+        if args[0] in ["x", "y"]:
+            axis = args[0]
+            args = args[1:]
+
+    if len(args) >= 1:
+        try:
+            fixed_value = float(args[0])
+            args = args[1:]
+        except ValueError:
+            pass
+
+    if len(args) >= 1:
+        csv_name = args[0]
 
     base_path = os.path.join("output", config_name)
     csv_path = os.path.join(base_path, "CSV", csv_name)
@@ -65,16 +74,23 @@ def main():
     t_max = data["t"].max()
     data = data[data["t"] == t_max]
 
-    # если y не задан — берём центральный
-    if fixed_y is None:
-        y_vals = np.sort(data["y"].unique())
-        fixed_y = y_vals[len(y_vals)//2]
+    # если значение не задано — берём центральное
+    if fixed_value is None:
+        vals = np.sort(data[axis].unique())
+        fixed_value = vals[len(vals)//2]
 
-    slice_df = data[np.isclose(data["y"], fixed_y)]
-    slice_df = slice_df.sort_values("x")
+    # формируем сечение
+    slice_df = data[np.isclose(data[axis], fixed_value)]
+
+    if axis == "y":
+        slice_df = slice_df.sort_values("x")
+        coord = "x"
+    else:
+        slice_df = slice_df.sort_values("y")
+        coord = "y"
 
     if slice_df.empty:
-        print(f"Нет данных для y = {fixed_y}")
+        print(f"Нет данных для {axis} = {fixed_value}")
         return
 
     # --- цвета ---
@@ -89,37 +105,36 @@ def main():
 
     lw = 2.2
 
-    axs[0, 0].plot(slice_df["x"], slice_df["rho"],
+    axs[0, 0].plot(slice_df[coord], slice_df["rho"],
                    color=colors["rho"], linewidth=lw)
     axs[0, 0].set_ylabel(r'$\rho$')
 
-    axs[0, 1].plot(slice_df["x"], slice_df["u"],
+    axs[0, 1].plot(slice_df[coord], slice_df["u"],
                    color=colors["u"], linewidth=lw)
     axs[0, 1].set_ylabel(r'$u$')
 
-    axs[1, 0].plot(slice_df["x"], slice_df["P"],
+    axs[1, 0].plot(slice_df[coord], slice_df["P"],
                    color=colors["P"], linewidth=lw)
     axs[1, 0].set_ylabel(r'$P$')
 
-    axs[1, 1].plot(slice_df["x"], slice_df["e"],
+    axs[1, 1].plot(slice_df[coord], slice_df["e"],
                    color=colors["e"], linewidth=lw)
     axs[1, 1].set_ylabel(r'$e$')
 
     for ax in axs.flatten():
-        ax.set_xlabel(r'$x$')
+        ax.set_xlabel(f'${coord}$')
         ax.grid(True, alpha=0.3)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
 
     fig.suptitle(
-        rf"{config_name} | $y={fixed_y:.4f}$ | $t={t_max:.4f}$",
+        rf"{config_name} | {axis}={fixed_value:.4f} | $t={t_max:.4f}$",
         fontsize=14
     )
 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 
-    # имя картинки = имя csv без расширения
-    image_name = os.path.splitext(csv_name)[0] + ".png"
+    image_name = os.path.splitext(csv_name)[0] + f"_{axis}.png"
     output_image = os.path.join(pics_path, image_name)
 
     plt.savefig(output_image, dpi=300)

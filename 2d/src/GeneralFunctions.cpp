@@ -268,11 +268,8 @@ void Streams(Field W,
 			 Field& F,
     		 int dir) {
 
-    //F.resize(Nx);
-
     if (dir == 0) {
         for (int i = fict; i < Nx + fict; i++)
-        //F[i].resize(Ny);
             for (int j = fict; j < Ny - 1 + fict; j++) {
 			
                 F[i][j][0] = W[i][j][0] * W[i][j][1]; // rho*u
@@ -290,29 +287,27 @@ void Streams(Field W,
     if (dir == 1) {
 
         for (int i = fict; i < Nx - 1 + fict; i++)
-        //Flux[i].resize(Ny);
             for (int j = fict; j < Ny + fict; j++) {
+
                 F[i][j][0] = W[i][j][0] * W[i][j][2]; // rho*v
 
-                F[i][j][2] = W[i][j][0] * W[i][j][1] * W[i][j][2]; // rho*u*v
+                F[i][j][1] = W[i][j][0] * W[i][j][1] * W[i][j][2]; // rho*u*v
 
-                F[i][j][1] = W[i][j][0] * std::pow(W[i][j][2], 2) + W[i][j][NEQ - 1]; // rho*v^2 + P
+                F[i][j][2] = W[i][j][0] * std::pow(W[i][j][2], 2) + W[i][j][NEQ - 1]; // rho*v^2 + P
 
                 double E = 0.5 * W[i][j][0] * (std::pow(W[i][j][1], 2) + std::pow(W[i][j][2], 2)) + W[i][j][NEQ - 1] /(gamm - 1.0); 
-                F[i][j][NEQ - 1] = W[i][j][2] * (E + W[i][j][NEQ - 1]); // u(rho*E + P)
+                F[i][j][NEQ - 1] = W[i][j][2] * (E + W[i][j][NEQ - 1]); // v(rho*E + P)
         }
     }
 }
 
 //1D
-void GetFluxes(// закомментил блок WENO и вязкости
-	Field W,
-	Field& F,
-	RecLimiterFunction func,
-	std::vector<double> x,
-    std::vector<double> y,
-	double dt, 
-    int dir) {
+void GetFluxes(Field W,
+			   Field& F, 
+			   RecLimiterFunction func,
+			   std::vector<double> x,
+			   std::vector<double> y,
+			   double dt, int dir) {
 		
 	if (method == "WENO") {/*
 		WENOStreams(W, F);
@@ -323,7 +318,8 @@ void GetFluxes(// закомментил блок WENO и вязкости
 				F[i][1] += q;
 			}
 		}*/
-	} else {
+	} 
+	else if (method == "Godunov") {
 
 		Field W_b(Nx + 2*fict, std::vector<State>(Ny + 2*fict));
 		FindBoundValues(W, W_b, F, x, y, dt, func, dir);
@@ -341,17 +337,16 @@ void GetFluxes(// закомментил блок WENO и вязкости
 	}
 }
 
-void Euler(Field& W_new, 
-			Field W, 
-			LimiterFunction phi,
-			RecLimiterFunction func,
-			int init_idx_x, 
-			int end_idx_x, 
-			int init_idx_y, 
-			int end_idx_y, 
-			std::vector<double> x, 
-			std::vector<double> y, 
-			double dt) {
+void Euler(Field& W_new, const Field& W, 
+		   LimiterFunction phi,
+		   RecLimiterFunction func, 
+		   int init_idx_x, 
+		   int end_idx_x, 
+		   int init_idx_y,
+		   int end_idx_y, 
+		   const std::vector<double>& x,
+		   const std::vector<double>& y,
+		   double dt) {
 				
 	size_t Nx_tot = Nx + 2*fict - 1;
 	size_t Ny_tot = Ny + 2*fict - 1;
@@ -359,7 +354,7 @@ void Euler(Field& W_new,
 	Field F(Nx_tot + 1, std::vector<State>(Ny_tot));
 	Field G(Nx_tot,     std::vector<State>(Ny_tot + 1));
 
-	if (method == "TVD") {/*                                      пока без TVD
+	if (method == "TVD") {/*        
 		Field F_low(N + 2 * fict, {0.0, 0.0, 0.0});
 		GetFluxes(W, F_low, "Godunov", TVD_solver, func, x, dt, Viscous_flag);
 
@@ -374,70 +369,69 @@ void Euler(Field& W_new,
 				F[i][j] = F_low[i][j] - phi(r_array[j])*(F_low[i][j] - F_high[i][j]);
 			}
 		}*/
+	} 
 
-	} else {
+	else if (method == "Godunov") {
+
 		GetFluxes(W, F, func, x, y, dt, 0);
         GetFluxes(W, G, func, x, y, dt, 1);
+
+		// Мб вынести этот подсчет отдельной функцией?
+		for (int i = init_idx_x; i < end_idx_x; i++) {
+			double dx = x[i + 1] - x[i];
+
+			for (int j = init_idx_y; j < end_idx_y; j++) {
+				double dy = y[j + 1] - y[j];
+			
+				W_new[i][j][0] = std::max(1e-7,
+								W[i][j][0]
+								- dt/dx * (F[i + 1][j][0] - F[i][j][0])
+								- dt/dy * (G[i][j + 1][0] - G[i][j][0]));
+
+
+				double mom_x_new = W[i][j][0] * W[i][j][1]
+								- dt/dx * (F[i + 1][j][1] - F[i][j][1])
+								- dt/dy * (G[i][j + 1][1] - G[i][j][1]);  
+				if (G[i + 1][j][1] != G[i][j][1]) {
+					std::cout << "here\n";
+				}
+
+				W_new[i][j][1] = mom_x_new / W_new[i][j][0];
+				if (std::abs(W_new[i][j][1]) < 1e-9) W_new[i][j][1] = 0.0;
+
+				double mom_y_new = W[i][j][0] * W[i][j][2]
+					- dt/dx * (F[i + 1][j][2] - F[i][j][2])
+					- dt/dy * (G[i][j + 1][2] - G[i][j][2]);
+
+				W_new[i][j][2] = mom_y_new / W_new[i][j][0];
+				if (std::abs(W_new[i][j][2]) < 1e-9) W_new[i][j][2] = 0.0;
+				
+				double E_old =
+						W[i][j][3] / (gamm - 1.0)
+						+ 0.5 * W[i][j][0] *
+						(W[i][j][1]*W[i][j][1] + W[i][j][2]*W[i][j][2]);
+
+				double E_new =
+						E_old
+						- dt/dx * (F[i + 1][j][3] - F[i][j][3])
+						- dt/dy * (G[i][j + 1][3] - G[i][j][3]);
+
+				double kinetic_new =
+						0.5 * W_new[i][j][0] *
+						(W_new[i][j][1]*W_new[i][j][1] +
+						W_new[i][j][2]*W_new[i][j][2]);
+
+				double P_new =
+						(gamm - 1.0) * (E_new - kinetic_new);
+
+				W_new[i][j][NEQ - 1] = std::max(1e-6, P_new);
+
+			}
+
+    	}
 	}
 
-	Field U(Nx_tot, std::vector<State>(Ny_tot));
-	ConvertWtoU(W, U, 0);
-
-	Field U_new(Nx_tot, std::vector<State>(Ny_tot));
-
-	for (int i = init_idx_x; i < end_idx_x; i++) {
-        double dx = x[i + 1] - x[i];
-
-        for (int j = init_idx_y; j < end_idx_y; j++) {
-            double dy = y[j + 1] - y[j];
-			for(int k = 0; k < NEQ; k++) {
-				//U_new[i][j][k] = U[i][j][k] - dt/dx*(F[i + 1][j][k]- F[i][j][k])- dt/dy*(G[i][j + 1][k]- G[i][j][k]);
-				//std::cout << F[i + 1][j][k] << "\n";
-			}
-			W_new[i][j][0] = std::max(1e-7,
-							W[i][j][0]
-							- dt/dx * (F[i + 1][j][0] - F[i][j][0])
-							- dt/dy * (G[i][j + 1][0] - G[i][j][0]));
-
-
-            double mom_x_new = W[i][j][0] * W[i][j][1]
-							- dt/dx * (F[i + 1][j][1] - F[i][j][1])
-							- dt/dy * (G[i][j + 1][1] - G[i][j][1]);  
-
-			W_new[i][j][1] = mom_x_new / W_new[i][j][0];
-			if (std::abs(W_new[i][j][1]) < 1e-9) W_new[i][j][1] = 0.0;
-
-			double mom_y_new = W[i][j][0] * W[i][j][2]
-				- dt/dx * (F[i + 1][j][2] - F[i][j][2])
-				- dt/dy * (G[i][j + 1][2] - G[i][j][2]);
-
-			W_new[i][j][2] = mom_y_new / W_new[i][j][0];
-			if (std::abs(W_new[i][j][2]) < 1e-9) W_new[i][j][2] = 0.0;
-			
-			double E_old =
-					W[i][j][3] / (gamm - 1.0)
-					+ 0.5 * W[i][j][0] *
-					(W[i][j][1]*W[i][j][1] + W[i][j][2]*W[i][j][2]);
-
-			double E_new =
-					E_old
-					- dt/dx * (F[i + 1][j][3] - F[i][j][3])
-					- dt/dy * (G[i][j + 1][3] - G[i][j][3]);
-
-			double kinetic_new =
-					0.5 * W_new[i][j][0] *
-					(W_new[i][j][1]*W_new[i][j][1] +
-					W_new[i][j][2]*W_new[i][j][2]);
-
-			double P_new =
-					(gamm - 1.0) * (E_new - kinetic_new);
-
-			W_new[i][j][NEQ - 1] = std::max(1e-6, P_new);
-
-		}
-
-
-    }
+	
 	//std::cout << std::endl;
 	//ConvertUtoW(W_new, U_new, 0);
 	/*for (int i = init_idx_x; i < end_idx_x; i++) {
@@ -467,24 +461,18 @@ void UpdateArrays(Field& W,
 	//std::vector<std::vector<double>> W_L(N + 2 * fict);
 	//std::vector<std::vector<double>> W_R(N + 2 * fict);
 	if (method == "FLIC") FLIC(W_new, W, x, y, dt);
-	else if (method == "MacCORMACK") {/* //БЕЗ МАККОРМАКА!!!
-		MacCORMACK(W, W_new, x, dt, solver);
-		return;*/
-	} 
 
 	// Для остальных методов
-	else if (time_method == "RK3") {// БЕЗ РК3!!!
-		/*RK3(W_new, W, method, solver, func, fict, N + fict - 1, x, dt, Viscous_flag);*/
-	} else {
+	// else if (time_method == "RK3") {
+	// 	RK3(W_new, W, method, solver, func, fict, N + fict - 1, x, dt, Viscous_flag);
+	// } 
+
+	else if (time_method == "Euler") {
 		Euler(W_new, W, phi, func, fict, Nx + fict - 1,  fict, Ny + fict - 1, x, y, dt);
 	}
 
     for (int i = fict; i < Nx + fict - 1; i++) {
         for (int j = fict; j < Ny + fict - 1; j++) {
-
-			/*for (int k = 0; k < NEQ; k++) {
-				if (W_new[i][j][k] < 1e-6) W_new[i][j][k] = 0;
-			}*/
 			W[i][j] = W_new[i][j];
         }
     }

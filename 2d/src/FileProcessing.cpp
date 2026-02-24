@@ -79,6 +79,70 @@ void SaveFieldToCSV(const Field& W,
     file.close();
 }
 
+void SaveFluxToCSV(const Field& Flux,
+                   const std::vector<double>& x,
+                   const std::vector<double>& y,
+                   const double& time,
+                   const std::string& filename,
+                   int dir)
+{
+    std::ofstream file(filename);
+
+    if (!file.is_open()) {
+        std::cerr << "Невозможно открыть файл " << filename << std::endl;
+        return;
+    }
+
+    file << "t,x,y,rho_flux,momx_flux,momy_flux,E_flux\n";
+
+    size_t Nx_tot = Nx + 2*fict - 1;
+    size_t Ny_tot = Ny + 2*fict - 1;
+
+    if (dir == 0) {
+        // Потоки по X (вертикальные грани)
+        for (size_t i = fict; i < Nx_tot + 1 - fict; i++) {
+
+            double xf = x[i];  // координата грани
+
+            for (size_t j = fict; j < Ny_tot - fict; j++) {
+
+                double yc = 0.5 * (y[j] + y[j+1]);
+
+                file << time << ","
+                     << xf   << ","
+                     << yc   << ","
+                     << Flux[i][j][0] << ","
+                     << Flux[i][j][1] << ","
+                     << Flux[i][j][2] << ","
+                     << Flux[i][j][3] << "\n";
+            }
+        }
+    }
+
+    else if (dir == 1) {
+        // Потоки по Y (горизонтальные грани)
+        for (size_t i = fict; i < Nx_tot - fict; i++) {
+
+            double xc = 0.5 * (x[i] + x[i+1]);
+
+            for (size_t j = fict; j < Ny_tot + 1 - fict; j++) {
+
+                double yg = y[j];  // координата грани
+
+                file << time << ","
+                     << xc   << ","
+                     << yg   << ","
+                     << Flux[i][j][0] << ","
+                     << Flux[i][j][1] << ","
+                     << Flux[i][j][2] << ","
+                     << Flux[i][j][3] << "\n";
+            }
+        }
+    }
+
+    file.close();
+}
+
 fs::path CreateDirFromPath(const std::string& file_path) {
     try {
         fs::path input_path(file_path);

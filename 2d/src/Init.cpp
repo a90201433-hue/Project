@@ -154,6 +154,16 @@ void InitValues(Field& W,
 				W[i][j] = {rho_R, u_R, 0.0, P_R};
 		}
 	}
+
+	// for (size_t i = fict; i < Nx_tot - fict; i++) {
+	// 	for (size_t j = fict; j < Ny_tot - fict; j++) {
+	// 		double xc = cell_center(i);
+	// 		if (xc < x0)
+	// 			W[j][i] = {rho_L, 0.0, u_L, P_L};
+	// 		else
+	// 			W[j][i] = {rho_R, 0.0, u_R, P_R};
+	// 	}
+	// }
 }
 
 

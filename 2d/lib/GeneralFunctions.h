@@ -14,8 +14,7 @@ void SolveBoundProblem(Field W,
                		   int dir);
 
 
-void FindBoundValues(Field W, 
-					 Field& W_b,
+void FindBoundValues(Field W, Field& W_b,
 					 Field& F,
                      std::vector<double> x,
 					 std::vector<double> y,
@@ -37,16 +36,15 @@ void GetFluxes(Field W,
 			   double dt, 
     		   int dir);
 
-void Euler(Field& W_new, 
-		   Field W, 
+void Euler(Field& W_new, const Field& W, 
 		   LimiterFunction phi,
-		   RecLimiterFunction func,
+		   RecLimiterFunction func, 
 		   int init_idx_x, 
 		   int end_idx_x, 
-    	   int init_idx_y, 
+		   int init_idx_y,
 		   int end_idx_y, 
-		   std::vector<double> x, 
-    	   std::vector<double> y, 
+		   const std::vector<double>& x,
+		   const std::vector<double>& y,
 		   double dt);
 
 void UpdateArrays(Field& W, 
@@ -55,5 +53,5 @@ void UpdateArrays(Field& W,
 				  RecLimiterFunction func,
 				  std::vector<double> x, 
 				  std::vector<double> y,
-				  double dt);
+				  double dt) ;
 #endif

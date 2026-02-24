@@ -9,6 +9,13 @@ void SaveFieldToCSV(const Field& W,
                     const double& time,
                     const std::string& filename);
 
+void SaveFluxToCSV(const Field& Flux,
+                   const std::vector<double>& x,
+                   const std::vector<double>& y,
+                   const double& time,
+                   const std::string& filename,
+                   int dir);
+
 fs::path CreateDirFromPath(const std::string& file_path);
 /*void MoveToChache(const std::string& source_root_path, const std::string& cache_root_path);
 

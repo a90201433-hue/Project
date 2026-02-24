@@ -12,11 +12,16 @@ def main():
 
     if len(sys.argv) < 3:
         print("Использование:")
-        print("python3 PlotMap.py <config_name> <field>")
+        print("python3 PlotMap.py <config_name> <field> [csv_name]")
         return
 
     config_name = sys.argv[1]
     field_name = sys.argv[2]
+
+    # --- CSV по умолчанию ---
+    csv_name = "Final.csv"
+    if len(sys.argv) >= 4:
+        csv_name = sys.argv[3]
 
     # --- Читаем конфиг визуализации ---
     with open("plot_config.json", "r") as f:
@@ -34,11 +39,11 @@ def main():
     quiver_step = field_cfg.get("quiver_step", 5)
 
     base_path = os.path.join("output", config_name)
-    csv_path = os.path.join(base_path, "CSV", "Final.csv")
+    csv_path = os.path.join(base_path, "CSV", csv_name)
     pics_path = os.path.join(base_path, "pics")
 
     if not os.path.exists(csv_path):
-        print("Файл Final.csv не найден:", csv_path)
+        print("CSV файл не найден:", csv_path)
         return
 
     os.makedirs(pics_path, exist_ok=True)
@@ -114,8 +119,9 @@ def main():
 
     plt.tight_layout()
 
-    output_image = os.path.join(pics_path,
-                                f"Map_{field_name}.png")
+    # имя картинки = имя csv + поле
+    image_name = f"Map_{os.path.splitext(csv_name)[0]}_{field_name}.png"
+    output_image = os.path.join(pics_path, image_name)
 
     plt.savefig(output_image, dpi=300)
     plt.close()
