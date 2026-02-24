@@ -141,8 +141,8 @@ int main(int argc, char* argv[]) {
 
 	fs::path base_output = fs::path("output") / config_name;
 
-	if (fs::exists(base_output)) {
-    	std::cout << "Очищаем папку: " << base_output << std::endl;
+	if (fs::exists(base_output / "CSV")) {
+    	std::cout << "Очищаем папку: " << base_output << "/CSV" << std::endl;
     	fs::remove_all(base_output);
 	}
 
@@ -398,7 +398,7 @@ int main(int argc, char* argv[]) {
         	pair.second.close();
 	}
 	*/
-	std::cout << std::endl << "Завершено успешно." << std::endl;	
+	std::cout << "Завершено успешно." << std::endl;	
 	return 0;
 
 }
