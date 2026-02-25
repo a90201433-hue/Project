@@ -14,7 +14,7 @@
 //#include "Acoustic.h"
 #include "GeneralFunctions.h"
 //#include "Analis.h"
-#include "Limiters.h"
+//#include "Limiters.h"
 #include "Types.h" // Здесь лежить NEQ - кол-во переменных в состоянии и field
 
 
@@ -78,37 +78,37 @@ void GetDt(const Field& W,
 }
 
 
-std::map<std::string, LimiterFunction> get_limiter_map() {
+// std::map<std::string, LimiterFunction> get_limiter_map() {
 	
-    std::map<std::string, LimiterFunction> limiter_map = {
-        {"superbee",   &superbeeLim}, 
-		{"vanAlbada1", &vanAlbada1}, 
-		{"CHARM",      &CHARM},
-		{"HCUS",       &HCUS},
-		{"HQUICK",     &HQUICK},
-		{"Koren",      &Koren},
-		{"minmod",     &minmodLim}, // Часто называют просто minmod
-		{"MC",         &MC},        // MC (Monotonized Central)
-		{"Osher",      &OsherLim},  // Osher and Chakravarthy
-		{"ospre",      &ospre},     // Ospre (Oshers-Sweby-P. R. E.)
-		{"smart",      &smart},
-		{"Sweby",      &Sweby},
-		{"UMIST",      &UMIST},
-		{"vanAlbada2", &vanAlbada2},
-		{"vanLeer",    &vanLeerLim}
-    };
-    return limiter_map;
-}
+//     std::map<std::string, LimiterFunction> limiter_map = {
+//         {"superbee",   &superbeeLim}, 
+// 		{"vanAlbada1", &vanAlbada1}, 
+// 		{"CHARM",      &CHARM},
+// 		{"HCUS",       &HCUS},
+// 		{"HQUICK",     &HQUICK},
+// 		{"Koren",      &Koren},
+// 		{"minmod",     &minmodLim}, // Часто называют просто minmod
+// 		{"MC",         &MC},        // MC (Monotonized Central)
+// 		{"Osher",      &OsherLim},  // Osher and Chakravarthy
+// 		{"ospre",      &ospre},     // Ospre (Oshers-Sweby-P. R. E.)
+// 		{"smart",      &smart},
+// 		{"Sweby",      &Sweby},
+// 		{"UMIST",      &UMIST},
+// 		{"vanAlbada2", &vanAlbada2},
+// 		{"vanLeer",    &vanLeerLim}
+//     };
+//     return limiter_map;
+// }
 
-std::map<std::string, RecLimiterFunction> get_rec_limiter_map() {
+// std::map<std::string, RecLimiterFunction> get_rec_limiter_map() {
 	
-    std::map<std::string, RecLimiterFunction> limiter_map = {
-        {"superbee",   &superbee}, 
-		{"minmod",     &minmod}, // Часто называют просто minmod
-		{"vanLeer",    &vanLeer}
-    };
-    return limiter_map;
-}
+//     std::map<std::string, RecLimiterFunction> limiter_map = {
+//         {"superbee",   &superbee}, 
+// 		{"minmod",     &minmod}, // Часто называют просто minmod
+// 		{"vanLeer",    &vanLeer}
+//     };
+//     return limiter_map;
+// }
 
 /*
 void printProgressBar(double t, double t_max) {
@@ -188,11 +188,8 @@ int main(int argc, char* argv[]) {
 			dt = t_max - t;
 		
 		t += dt;
-
 		UpdateArrays(W, 
 					W_new,
-					&minmodLim,
-					&minmod,
 					x, y,
 					dt);
 

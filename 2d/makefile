@@ -1,39 +1,35 @@
-CC = g++
-CFLAGS = -g -c -Wall -Ilib
+CXX = g++
+CXXFLAGS = -g -Wall -std=c++17 -I lib -I src
 LDFLAGS =
+
 SRCDIR = src
 OBJDIR = obj
-EXECUTABLE = test
+TARGET = test
 
-# Находим все .cpp файлы в src/
-SOURCES = $(wildcard $(SRCDIR)/*.cpp)
+# Рекурсивный поиск всех .cpp
+SOURCES = $(shell find $(SRCDIR) -name "*.cpp")
 
-# Преобразуем пути src/*.cpp → build/*.o
-OBJECTS = $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SOURCES))
+# Преобразование src/...cpp → obj/...o
+OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
 
-all: $(EXECUTABLE)
+all: $(TARGET)
 
-$(EXECUTABLE): $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
+$(TARGET): $(OBJECTS)
+	$(CXX) $(OBJECTS) -o $@
 
-# Создание директории build при необходимости
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
+# Компиляция с сохранением структуры папок
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Правило для сборки .o файлов в build/
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
-	$(CC) $(CFLAGS) $< -o $@
+run: $(TARGET)
+	./$(TARGET)
 
-pict: $(EXECUTABLE)
-	./$(EXECUTABLE)
+pict: $(TARGET)
+	./$(TARGET)
 	python3 picture.py
-
-run: $(EXECUTABLE)
-	./$(EXECUTABLE)
-	python3 animation.py
-	python3 picture.py
-	python3 Err.py
 
 clean:
-	rm -rf $(OBJDIR) $(EXECUTABLE)
+	rm -rf $(OBJDIR) $(TARGET)
 
+.PHONY: all clean run pict
