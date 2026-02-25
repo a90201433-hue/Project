@@ -1,8 +1,6 @@
 #ifndef _GENERAL_FUNCTIONS_H_
-#define _GENERAL_FUNCTIONS_H
+#define _GENERAL_FUNCTIONS_H_
 
-#include <functional>
-//#include "Limiters.h"
 #include "Types.h"
 
 State PhysicalFlux(const State& W, int dir);
@@ -12,24 +10,6 @@ State ExactFlux(const State& WL,
 State ComputeNumericalFlux(const State& WL,
                            const State& WR,
                            int dir);
-void ReconstructGodunov(const Field& W,
-                        Field& W_L,
-                        Field& W_R,
-                        int dir);
-State Minmod(const State& a,
-             const State& b);
-State Superbee(const State& a,
-			   const State& b);
-void ReconstructKolgan(const Field& W,
-                       Field& W_L,
-                       Field& W_R,
-                       int dir);
-
-void Reconstruct(const Field& W,
-                 Field& W_L,
-                 Field& W_R,
-                 int dir);			   	
-
 
 void ComputeFluxes(const Field& W,
                    Field& F,

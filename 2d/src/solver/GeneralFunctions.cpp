@@ -13,7 +13,7 @@
 // #include "Limiters.h"
 #include "Types.h"
 #include "FileProcessing.h"
-
+#include "Reconstruction.h"
 #include "FLIC.h"
 
 
@@ -21,8 +21,8 @@ extern double gamm, Lx, Ly, C1, C2;
 extern int Nx, Ny, fict;
 
 extern std::string method, solver, time_method;
-extern std::string high_order_method, TVD_solver;
-extern bool Viscous_flag, TVD_flag;
+//extern std::string high_order_method, TVD_solver;
+//extern bool Viscous_flag, TVD_flag;
 
 
 State PhysicalFlux(const State& W, int dir) {
@@ -82,133 +82,9 @@ State ComputeNumericalFlux(const State& WL,
 	
 }
 
-void ReconstructGodunov(const Field& W,
-                        Field& W_L,
-                        Field& W_R,
-                        int dir) {
-    if (dir == 0) {
-        for (int j = fict; j < Ny - 1 + fict; j++) {
-            for (int i = fict; i < Nx + fict; i++) {
-                W_L[i][j] = W[i - 1][j]; // левая ячейка
-                W_R[i][j] = W[i][j];     // правая ячейка
-            }
-        }
-    }
 
-    else if (dir == 1) {
-        for (int i = fict; i < Nx - 1 + fict; i++) {
-            for (int j = fict; j < Ny + fict; j++) {
-                W_L[i][j] = W[i][j - 1]; // нижняя ячейка
-                W_R[i][j] = W[i][j];     // верхняя ячейка
-            }
-        }
-    }
-}
 
-State Minmod(const State& a,
-             const State& b) {
-    State s;
 
-    for (int k = 0; k < NEQ; k++) {
-        if (a[k]*b[k] <= 0.0)
-            s[k] = 0.0;
-        else
-            s[k] = (std::abs(a[k]) < std::abs(b[k])) ? a[k] : b[k];
-    }
-    return s;
-}
-
-State Superbee(const State& a,
-               const State& b) {
-    State s;
-
-    for (int k = 0; k < NEQ; k++)
-    {
-        if (a[k] * b[k] <= 0.0)
-        {
-            s[k] = 0.0;
-        }
-        else
-        {
-            double sign = (a[k] > 0.0) ? 1.0 : -1.0;
-
-            double abs_a = std::abs(a[k]);
-            double abs_b = std::abs(b[k]);
-
-            double val1 = std::min(2.0 * abs_a, abs_b);
-            double val2 = std::min(abs_a, 2.0 * abs_b);
-
-            s[k] = sign * std::max(val1, val2);
-        }
-    }
-
-    return s;
-}
-
-void ReconstructKolgan(const Field& W,
-                       Field& W_L,
-                       Field& W_R,
-                       int dir) {
-    if (dir == 0) {
-        for (int j = fict; j < Ny - 1 + fict; j++) {
-            for (int i = fict; i < Nx + fict; i++) {
-                State dWm, dWp;
-
-                for (int k = 0; k < NEQ; k++) {
-                    dWm[k] = W[i-1][j][k] - W[i-2][j][k];
-                    dWp[k] = W[i][j][k]   - W[i-1][j][k];
-                }
-
-                State slope = Minmod(dWm, dWp);
-
-                for (int k = 0; k < NEQ; k++) {
-                    W_L[i][j][k] =
-                        W[i-1][j][k] + 0.5 * slope[k];
-
-                    W_R[i][j][k] =
-                        W[i][j][k]   - 0.5 * slope[k];
-                }
-            }
-        }
-    }
-
-    else if (dir == 1) {
-        for (int i = fict; i < Nx - 1 + fict; i++) {
-            for (int j = fict; j < Ny + fict; j++) {
-                State dWm, dWp;
-
-                for (int k = 0; k < NEQ; k++) {
-                    dWm[k] = W[i][j-1][k] - W[i][j-2][k];
-                    dWp[k] = W[i][j][k]   - W[i][j-1][k];
-                }
-
-                State slope = Minmod(dWm, dWp);
-
-                for (int k = 0; k < NEQ; k++) {
-                    W_L[i][j][k] =
-                        W[i][j-1][k] + 0.5 * slope[k];
-
-                    W_R[i][j][k] =
-                        W[i][j][k]   - 0.5 * slope[k];
-                }
-            }
-        }
-    }
-}
-
-void Reconstruct(const Field& W,
-                 Field& W_L,
-                 Field& W_R,
-                 int dir) {
-	
-	if (method == "Godunov")
-        ReconstructGodunov(W, W_L, W_R, dir);
-
-    else if (method == "Kolgan")
-        ReconstructKolgan(W, W_L, W_R, dir);
-
-	return;
-}
 
 void ComputeFluxes(const Field& W,
                    Field& F,
@@ -216,7 +92,6 @@ void ComputeFluxes(const Field& W,
 
 	size_t Nx_tot = Nx + 2*fict - 1;
 	size_t Ny_tot = Ny + 2*fict - 1;
-
 
     if (dir == 0) {
 		Field W_L(Nx_tot + 1,
