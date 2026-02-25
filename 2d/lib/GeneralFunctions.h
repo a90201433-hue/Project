@@ -5,45 +5,6 @@
 //#include "Limiters.h"
 #include "Types.h"
 
-
-
-//2D, по индексам, только точный решатель
-void SolveBoundProblem(Field W, 
-		       		   Field& W_b,
-		       		   Field& F,
-               		   int dir);
-
-
-void FindBoundValues(Field W, Field& W_b,
-					 Field& F,
-                     std::vector<double> x,
-					 std::vector<double> y,
-					 double dt,
-                     int dir);
-
-
-void Streams(Field W,
-			 Field& F,
-    		 int dir);
-
-// закомментил блок WENO и вязкости
-void GetFluxes(Field W,
-			   Field& F,
-			   std::vector<double> x,
-    		   std::vector<double> y,
-			   double dt, 
-    		   int dir);
-
-// void Euler(Field& W_new, const Field& W, 
-// 		   LimiterFunction phi,
-// 		   RecLimiterFunction func, 
-// 		   int init_idx_x, 
-// 		   int end_idx_x, 
-// 		   int init_idx_y,
-// 		   int end_idx_y, 
-// 		   const std::vector<double>& x,
-// 		   const std::vector<double>& y,
-// 		   double dt);
 State PhysicalFlux(const State& W, int dir);
 State ExactFlux(const State& WL,
                 const State& WR,
