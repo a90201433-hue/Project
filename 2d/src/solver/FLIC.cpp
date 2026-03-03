@@ -259,7 +259,7 @@ void FLIC(Field& W_new,
 
     double dt_half = 0.5 * dt;
 
-    // По поводу swap - я не заметила, чтобы он что-то менял. Шо с ним, шо без него работает
+    // По поводу swap - я не заметила, чтобы он что-то менял.
     // FLIC_L(W, W_tilde, x, y, dt_half, 0);
     // BoundCond(W_tilde);
     // FLIC_E(W_tilde, W_tmp, x, y, dt_half, 0);

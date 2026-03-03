@@ -16,7 +16,7 @@ extern double Lx, Ly, t_max, time_fo, x0, gamm, CFL, Q, C1, C2;
 extern std::string x_left_bound, x_right_bound,
 				   y_up_bound, y_down_bound;
 
-extern std::string Test, high_order_method, TVD_solver, TVD_limiter;
+extern std::string high_order_method, TVD_solver, TVD_limiter;
 extern std::string method, solver, time_method, rec_limiter;
 extern bool Diffusion_flag, Viscous_flag, TVD_flag;
 extern int fict;
@@ -106,8 +106,9 @@ void InitValues(Field& W,
 	SimpleToml config, test;
 	
 	config.load(config_path);
-	Test = config.root["simulation"].table["Test"].str;
-	
+	std::string Test = config.root["simulation"].table["Test"].str;
+	std::string direction = config.root["simulation"].table["direction"].str;
+
 	// Не тест Сода - тут будет функция заполнения
 	if (Test == "custom") {
 		std::cerr << "Кастомный тест пока не настроен!" << std::endl;
@@ -145,25 +146,29 @@ void InitValues(Field& W,
     	return 0.5 * (x[k] + x[k+1]);
 	};
 
-	for (size_t i = fict; i < Nx_tot - fict; i++) {
-		for (size_t j = fict; j < Ny_tot - fict; j++) {
-			double xc = cell_center(i);
-			if (xc < x0)
-				W[i][j] = {rho_L, u_L, 0.0, P_L};
-			else
-				W[i][j] = {rho_R, u_R, 0.0, P_R};
+	if (direction == "x") {
+		for (size_t i = fict; i < Nx_tot - fict; i++) {
+			for (size_t j = fict; j < Ny_tot - fict; j++) {
+				double xc = cell_center(i);
+				if (xc < x0)
+					W[i][j] = {rho_L, u_L, 0.0, P_L};
+				else
+					W[i][j] = {rho_R, u_R, 0.0, P_R};
+			}
 		}
 	}
 
-	// for (size_t i = fict; i < Nx_tot - fict; i++) {
-	// 	for (size_t j = fict; j < Ny_tot - fict; j++) {
-	// 		double xc = cell_center(i);
-	// 		if (xc < x0)
-	// 			W[j][i] = {rho_L, 0.0, u_L, P_L};
-	// 		else
-	// 			W[j][i] = {rho_R, 0.0, u_R, P_R};
-	// 	}
-	// }
+	else if (direction == "y") {
+		for (size_t i = fict; i < Nx_tot - fict; i++) {
+			for (size_t j = fict; j < Ny_tot - fict; j++) {
+				double xc = cell_center(i);
+				if (xc < x0)
+					W[j][i] = {rho_L, 0.0, u_L, P_L};
+				else
+					W[j][i] = {rho_R, 0.0, u_R, P_R};
+			}
+		}
+	}
 }
 
 

@@ -3,10 +3,6 @@
 
 #include "Types.h"
 
-State PhysicalFlux(const State& W, int dir);
-State ExactFlux(const State& WL,
-                const State& WR,
-                int dir);
 State ComputeNumericalFlux(const State& WL,
                            const State& WR,
                            int dir);

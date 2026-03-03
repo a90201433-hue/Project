@@ -26,7 +26,7 @@ double Lx, Ly, t_max, time_fo, x0, gamm, CFL, Q, C1, C2;
 std::string x_left_bound, x_right_bound,
 			y_up_bound, y_down_bound;
 
-std::string Test, high_order_method, TVD_solver, TVD_limiter;
+std::string high_order_method, TVD_solver, TVD_limiter;
 
 std::string method, solver, time_method, rec_limiter;
 bool Diffusion_flag, Viscous_flag, TVD_flag;
@@ -51,8 +51,8 @@ void GetDt(const Field& W,
 	int Nx_cells = Nx - 1;
 	int Ny_cells = Ny - 1;
 
-	for (size_t i = fict; i < Nx_cells + fict; i++) {
-        for (size_t j = fict; j < Ny_cells + fict; ++j) {
+	for (int i = fict; i < Nx_cells + fict; i++) {
+        for (int j = fict; j < Ny_cells + fict; ++j) {
 
             rho = W[i][j][0];
             u   = W[i][j][1];
