@@ -40,7 +40,6 @@ State ComputeNumericalFlux(const State& WL,
         return RoeFlux(WL, WR, dir);
 }
 
->>>>>>> master
 void ComputeFluxes(const Field& W,
 					Field& F,
 					const std::vector<double>& x, 
