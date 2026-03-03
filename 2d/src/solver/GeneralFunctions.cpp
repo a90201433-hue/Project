@@ -79,16 +79,20 @@ State ComputeNumericalFlux(const State& WL,
 
     // else if (solver == "HLLC")
     //     return HLLCFlux(WL, WR, dir);
-	
+
+
+
+
+
 }
 
 
-
-
-
 void ComputeFluxes(const Field& W,
-                   Field& F,
-                   int dir) {
+					Field& F,
+					const std::vector<double>& x, 
+					const std::vector<double>& y,
+					double dt,
+					int dir) {
 
 	size_t Nx_tot = Nx + 2*fict - 1;
 	size_t Ny_tot = Ny + 2*fict - 1;
@@ -98,8 +102,8 @@ void ComputeFluxes(const Field& W,
                   std::vector<State>(Ny_tot));
         Field W_R(Nx_tot + 1,
                   std::vector<State>(Ny_tot));
-
-        Reconstruct(W, W_L, W_R, 0); // Сюда вшивать реконструкции Колгана/Родионова/ENO
+												//добавил x, y, dt для родионова
+        Reconstruct(W, W_L, W_R, x, y, dt, 0); // Сюда вшивать реконструкции Колгана/Родионова/ENO
         for (int i = fict; i < Nx + fict; i++) {
             for (int j = fict; j < Ny - 1 + fict; j++) {
             	F[i][j] = ComputeNumericalFlux(W_L[i][j], W_R[i][j], dir);
@@ -113,7 +117,7 @@ void ComputeFluxes(const Field& W,
         Field W_R(Nx_tot,
                   std::vector<State>(Ny_tot + 1));
 
-        Reconstruct(W, W_L, W_R, 1);
+        Reconstruct(W, W_L, W_R, x, y, dt, 1);
         for (int i = fict; i < Nx - 1 + fict; i++) {
             for (int j = fict; j < Ny + fict; j++) {
             	F[i][j] = ComputeNumericalFlux(W_L[i][j], W_R[i][j], dir);
@@ -136,8 +140,8 @@ void Euler(const Field& W,
 	Field F(Nx_tot + 1, std::vector<State>(Ny_tot));
 	Field G(Nx_tot,     std::vector<State>(Ny_tot + 1));
 	
-	ComputeFluxes(W, F, 0);
-	ComputeFluxes(W, G, 1);
+	ComputeFluxes(W, F, x, y, dt, 0);
+	ComputeFluxes(W, G, x, y, dt, 1);
 	
 
 	for (int i = fict; i < Nx + fict - 1; i++) {

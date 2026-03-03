@@ -4,16 +4,21 @@
 #include "Types.h"
 
 State PhysicalFlux(const State& W, int dir);
+
 State ExactFlux(const State& WL,
                 const State& WR,
                 int dir);
+
 State ComputeNumericalFlux(const State& WL,
                            const State& WR,
                            int dir);
 
-void ComputeFluxes(const Field& W,
-                   Field& F,
-                   int dir);
+void ComputeFluxes(	const Field& W,
+					Field& F,
+					const std::vector<double>& x, 
+					const std::vector<double>& y,
+					double dt,
+					int dir);
 
 void Euler(const Field& W,
 		   Field& W_new,
