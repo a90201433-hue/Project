@@ -2,15 +2,8 @@
 #include <cmath>
 #include <iostream>
 #include <string>
-#include "RiemannSolver.h"
-//#include "ApproxSolvers.h"
-#include "BoundCond.h"
-#include "TransformValues.h"
-#include "Init.h"
-#include "GeneralFunctions.h"
-//#include "ENO.h"
-//#include "WENO.h"
-// #include "Limiters.h"
+//#include "BoundCond.h"
+#include "Fluxes.h"
 #include "Types.h"
 #include "FileProcessing.h"
 #include "Reconstruction.h"
@@ -25,68 +18,29 @@ extern std::string method, solver, time_method;
 //extern bool Viscous_flag, TVD_flag;
 
 
-State PhysicalFlux(const State& W, int dir) {
-    State F;
-
-    double rho = W[0];
-    double u   = W[1];
-    double v   = W[2];
-    double P   = W[NEQ - 1];
-
-    double E = P/(gamm-1.0)
-               + 0.5*rho*(u*u + v*v);
-
-    if (dir == 0) {
-        F[0] = rho*u;
-        F[1] = rho*u*u + P;
-        F[2] = rho*u*v;
-        F[NEQ - 1] = u*(E + P);
-    }
-    if (dir == 1) {
-        F[0] = rho*v;
-        F[1] = rho*u*v;
-        F[2] = rho*v*v + P;
-        F[NEQ - 1] = v*(E + P);
-    }
-
-    return F;
-}
-
-State ExactFlux(const State& WL,
-                const State& WR,
-                int dir) {
-    State W_star;
-
-    NewtonForPressure(WL, WR, W_star, 1e-6, dir);
-
-    W_star = GetParamsFromChoosingWave(WL, WR, W_star,
-            						   0.0, 1.0, dir);
-
-    return PhysicalFlux(W_star, dir);
-}
-
 State ComputeNumericalFlux(const State& WL,
                            const State& WR,
                            int dir) {
     if (solver == "Exact")
         return ExactFlux(WL, WR, dir);
 
-    // else if (solver == "Roe")
-    //     return RoeFlux(WL, WR, dir);
+    else if (solver == "HLL")
+        return HLLFlux(WL, WR, dir);
 
-    // else if (solver == "HLL")
-    //     return HLLFlux(WL, WR, dir);
+    else if (solver == "HLLC")
+        return HLLCFlux(WL, WR, dir);
 
-    // else if (solver == "HLLC")
-    //     return HLLCFlux(WL, WR, dir);
+	else if (solver == "Rusanov")
+        return RusanovFlux(WL, WR, dir);
 
+	else if (solver == "Osher")
+        return OsherFlux(WL, WR, dir);
 
-
-
-
+	else
+        return RoeFlux(WL, WR, dir);
 }
 
-
+>>>>>>> master
 void ComputeFluxes(const Field& W,
 					Field& F,
 					const std::vector<double>& x, 

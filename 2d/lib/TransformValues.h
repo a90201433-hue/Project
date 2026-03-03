@@ -3,6 +3,7 @@
 #include "Types.h"
 
 void ConvertWtoU(Field W, Field& U, int dir);
+void ConvertWtoU(State W, State& U);
 void ConvertUtoW(Field& W, Field U, int dir);
 
 #endif

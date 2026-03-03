@@ -38,14 +38,14 @@ def main():
     fixed_value = None
     csv_name = "Final.csv"
 
-    # --- разбор аргументов ---
     args = sys.argv[2:]
 
-    if len(args) >= 1:
-        if args[0] in ["x", "y"]:
-            axis = args[0]
-            args = args[1:]
+    # --- axis ---
+    if len(args) >= 1 and args[0] in ["x", "y"]:
+        axis = args[0]
+        args = args[1:]
 
+    # --- значение ---
     if len(args) >= 1:
         try:
             fixed_value = float(args[0])
@@ -53,6 +53,7 @@ def main():
         except ValueError:
             pass
 
+    # --- имя csv ---
     if len(args) >= 1:
         csv_name = args[0]
 
@@ -70,33 +71,38 @@ def main():
     if data is None:
         return
 
-    # берём последний момент времени
+    # --- последний момент времени ---
     t_max = data["t"].max()
     data = data[data["t"] == t_max]
 
-    # если значение не задано — берём центральное
+    # --- если значение не задано → берём центральное ---
     if fixed_value is None:
-        vals = np.sort(data[axis].unique())
-        fixed_value = vals[len(vals)//2]
+        unique_vals = np.sort(data[axis].unique())
+        fixed_value = unique_vals[len(unique_vals)//2]
 
-    # формируем сечение
+    # --- формируем сечение ---
     slice_df = data[np.isclose(data[axis], fixed_value)]
-
-    if axis == "y":
-        slice_df = slice_df.sort_values("x")
-        coord = "x"
-    else:
-        slice_df = slice_df.sort_values("y")
-        coord = "y"
 
     if slice_df.empty:
         print(f"Нет данных для {axis} = {fixed_value}")
         return
 
+    # --- определяем направление построения ---
+    if axis == "y":
+        coord = "x"
+        velocity_component = "u"
+        velocity_label = r"$u$"
+    else:
+        coord = "y"
+        velocity_component = "v"
+        velocity_label = r"$v$"
+
+    slice_df = slice_df.sort_values(coord)
+
     # --- цвета ---
     colors = {
         "rho": "#1f77b4",
-        "u":   "#d62728",
+        "vel": "#d62728",
         "P":   "#2ca02c",
         "e":   "#9467bd"
     }
@@ -105,18 +111,22 @@ def main():
 
     lw = 2.2
 
+    # rho
     axs[0, 0].plot(slice_df[coord], slice_df["rho"],
                    color=colors["rho"], linewidth=lw)
     axs[0, 0].set_ylabel(r'$\rho$')
 
-    axs[0, 1].plot(slice_df[coord], slice_df["u"],
-                   color=colors["u"], linewidth=lw)
-    axs[0, 1].set_ylabel(r'$u$')
+    # velocity
+    axs[0, 1].plot(slice_df[coord], slice_df[velocity_component],
+                   color=colors["vel"], linewidth=lw)
+    axs[0, 1].set_ylabel(velocity_label)
 
+    # pressure
     axs[1, 0].plot(slice_df[coord], slice_df["P"],
                    color=colors["P"], linewidth=lw)
     axs[1, 0].set_ylabel(r'$P$')
 
+    # internal energy
     axs[1, 1].plot(slice_df[coord], slice_df["e"],
                    color=colors["e"], linewidth=lw)
     axs[1, 1].set_ylabel(r'$e$')

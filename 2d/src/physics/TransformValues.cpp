@@ -14,7 +14,6 @@ void ConvertWtoU(Field W, Field& U, int dir) {
 	for (int j = 0; j < ny; j++) {
 		int nx = W[j].size();
 		U[j].resize(nx);
-        
 		for (int i = 0; i < nx; i++) {
             		double rho = W[j][i][0];
 					double u   = W[j][i][1];
@@ -30,6 +29,24 @@ void ConvertWtoU(Field W, Field& U, int dir) {
 			
 		}
 	}
+}
+
+void ConvertWtoU(State W, State& U) {
+    
+	double rho = W[0];
+	double u   = W[1];
+	double v   = W[2];
+	double P   = W[NEQ - 1];
+
+	double E = P / (rho * (gamm - 1.0)) 
+				+ 0.5 * (u * u + v * v);
+
+	U[0] = rho;
+	U[1] = rho * u;
+	U[2] = rho * v;
+	U[3] = rho * E;
+
+	return;	
 }
 
 void ConvertUtoW(Field& W, Field U, int dir) {
