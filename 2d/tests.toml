@@ -1,13 +1,13 @@
 [test1]
 rho_L = 1.0
-u_L = 0.75
+u_L = 0.0
 P_L = 1.0
 
 rho_R = 0.125
 u_R = 0.0
 P_R = 0.1
 
-x_gap = 0.3
+x_gap = 0.5
 max_t = 0.2
 
 [test2]

@@ -21,7 +21,7 @@ void Euler(const Field& W,
 		   double dt);
 
 void UpdateArrays(Field& W, 
-				  Field W_new,
+				  Field& W_new,
 				  std::vector<double> x, 
 				  std::vector<double> y,
 				  double dt) ;

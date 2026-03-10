@@ -7,6 +7,7 @@
 
 #include "ParseTOML.h"
 #include "Types.h"
+#include "MaderSolver.h"
 
 extern int Nx, Ny;
 extern int step_fo, step_max, bound_case;
@@ -20,6 +21,19 @@ extern std::string high_order_method, TVD_solver, TVD_limiter;
 extern std::string method, solver, time_method, rec_limiter;
 extern bool Diffusion_flag, Viscous_flag, TVD_flag;
 extern int fict;
+
+extern double gamma_gas;
+extern double VISC;
+
+extern double Z_freq;
+extern double E_act;
+extern double Rgas;
+
+extern double MINWT;
+extern double GASW;
+extern double MINGRHO;
+extern double M_molar;
+
 
 void readConfig(const std::string& config_path) {
 
@@ -68,6 +82,19 @@ void readConfig(const std::string& config_path) {
 	time_fo = toml.root["recording"].table["time_fo"].number;
 	step_max = toml.root["recording"].table["step_max"].number;
 
+	auto& chem = toml.root["chemistry"].table;
+
+	Z_freq = chem["Z"].number;
+	E_act  = chem["E_act"].number;
+	Rgas   = chem["Rgas"].number;
+
+	MINWT  = chem["MINWT"].number;
+	GASW   = chem["GASW"].number;
+
+	MINGRHO = chem["mingrho"].number;
+
+	M_molar = chem["M"].number;
+
 }
 
 void Grid(std::vector<double>& x, std::vector<double>& xc,
@@ -88,6 +115,17 @@ void Grid(std::vector<double>& x, std::vector<double>& xc,
 		y[i] = (i - fict)*dy;
 	for (int i = 0; i < Ny + 2*fict - 1; i++) 
 		yc[i] = y[i] + 0.5*dy;
+
+}
+
+void InitializeOmegaField()
+{
+
+	InitializeMaderSolver(Nx,Ny);
+
+	for(int i=0;i<Nx+2*fict;i++)
+	for(int j=0;j<Ny+2*fict;j++)
+		omega[i][j][0] = 1.0;
 
 }
 

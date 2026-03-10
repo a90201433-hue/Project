@@ -14,5 +14,5 @@ void InitValues(Field& W,
 				const std::vector<double>& x, 
 				const std::vector<double>& y,
 				const std::string& config_path);
-
+void InitializeOmegaField();
 #endif

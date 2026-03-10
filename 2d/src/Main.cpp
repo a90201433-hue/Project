@@ -33,48 +33,61 @@ bool Diffusion_flag, Viscous_flag, TVD_flag;
 
 int fict = 3;
 
+double gamma_gas;
+double VISC;
 
-void GetDt(const Field& W, 
-		   const std::vector<double>& x, 
-		   const std::vector<double>& y, 
-		   double& dt) {
-	
-	double dx = Lx / (Nx - 1);
-	double dy = Ly / (Ny - 1);
+double Z_freq;
+double E_act;
+double Rgas;
 
-	double max_lambda_x = 0.0;
+double MINWT;
+double GASW;
+double MINGRHO;
+
+double M_molar;
+
+
+void GetDt(const Field& W,
+           const std::vector<double>& x,
+           const std::vector<double>& y,
+           double& dt)
+{
+    double dx = Lx / (Nx - 1);
+    double dy = Ly / (Ny - 1);
+
+    double max_lambda_x = 0.0;
     double max_lambda_y = 0.0;
 
-	double rho, u, v, P;
-	double c;
+    double rho, u, v, P;
+    double c;
 
-	int Nx_cells = Nx - 1;
-	int Ny_cells = Ny - 1;
+    int Nx_cells = Nx - 1;
+    int Ny_cells = Ny - 1;
 
-	for (int i = fict; i < Nx_cells + fict; i++) {
-        for (int j = fict; j < Ny_cells + fict; ++j) {
+    for (int i = fict; i < Nx_cells + fict; i++)
+    for (int j = fict; j < Ny_cells + fict; j++)
+    {
+        rho = W[i][j][0];
+        u   = W[i][j][1];
+        v   = W[i][j][2];
+        P   = W[i][j][NEQ - 1];
 
-            rho = W[i][j][0];
-            u   = W[i][j][1];
-            v   = W[i][j][2];
-            P   = W[i][j][NEQ - 1];
+        c = std::sqrt(gamma_gas * P / rho);
 
-            c = std::sqrt(gamm * P / rho);
+        max_lambda_x = std::max(max_lambda_x,
+                                std::abs(u) + c);
 
-            max_lambda_x = std::max(max_lambda_x,
-                                    std::abs(u) + c);
-
-            max_lambda_y = std::max(max_lambda_y,
-                                    std::abs(v) + c);
-        }
+        max_lambda_y = std::max(max_lambda_y,
+                                std::abs(v) + c);
     }
 
-	double dt_x = dx / max_lambda_x;
+    if(max_lambda_x < 1e-12) max_lambda_x = 1e-12;
+    if(max_lambda_y < 1e-12) max_lambda_y = 1e-12;
+
+    double dt_x = dx / max_lambda_x;
     double dt_y = dy / max_lambda_y;
 
-	dt = CFL * std::min(dt_x, dt_y);
-
-	return;
+    dt = CFL * std::min(dt_x, dt_y);
 }
 
 
@@ -171,6 +184,7 @@ int main(int argc, char* argv[]) {
 
 	Field W_0(Nx_tot, std::vector<State>(Ny_tot));
 	InitValues(W_0, x, y, config_path);
+	InitializeOmegaField();
 	BoundCond(W_0);
 
 	double t = 0.0, dt = 1.0;

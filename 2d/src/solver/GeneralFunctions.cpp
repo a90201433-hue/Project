@@ -8,6 +8,7 @@
 #include "FileProcessing.h"
 #include "Reconstruction.h"
 #include "FLIC.h"
+#include "MaderSolver.h"
 
 
 extern double gamm, Lx, Ly, C1, C2;
@@ -149,12 +150,19 @@ void Euler(const Field& W,
 
 
 void UpdateArrays(Field& W, 
-				  Field W_new,
+				  Field& W_new,
 				  std::vector<double> x, 
 				  std::vector<double> y,
 				  double dt) {
-	
-	if (method == "FLIC") FLIC(W_new, W, x, y, dt);
+
+	if (method == "Mader") {
+        double dx = Lx / (Nx - 1);
+        double dy = Ly / (Ny - 1);
+        MaderTimeStep(W, W_new, dt, dx, dy);
+
+    }
+
+	else if (method == "FLIC") FLIC(W_new, W, x, y, dt);
 
 	// Для остальных методов
 	// else if (time_method == "RK3") {
