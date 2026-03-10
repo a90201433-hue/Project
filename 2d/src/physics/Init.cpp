@@ -22,7 +22,6 @@ extern std::string method, solver, time_method, rec_limiter;
 extern bool Diffusion_flag, Viscous_flag, TVD_flag;
 extern int fict;
 
-extern double gamma_gas;
 extern double VISC;
 
 extern double Z_freq;
@@ -45,6 +44,7 @@ void readConfig(const std::string& config_path) {
     }
 	
 	gamm = toml.root["simulation"].table["gamma"].number;
+
 	auto& scheme = toml.root["scheme"].table;
 	
 	method = scheme["method"].str;
@@ -87,7 +87,7 @@ void readConfig(const std::string& config_path) {
 	Z_freq = chem["Z"].number;
 	E_act  = chem["E_act"].number;
 	Rgas   = chem["Rgas"].number;
-
+	VISC = chem["VISC"].number;
 	MINWT  = chem["MINWT"].number;
 	GASW   = chem["GASW"].number;
 

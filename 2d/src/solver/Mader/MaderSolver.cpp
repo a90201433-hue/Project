@@ -1,5 +1,6 @@
 #include "MaderSolver.h"
 #include "TransformValues.h"
+#include "BoundCond.h"
 #include <cmath>
 
 Field omega;
@@ -23,7 +24,7 @@ extern int Nx;
 extern int Ny;
 extern int fict;
 
-extern double gamma_gas;
+extern double gamm;
 extern double VISC;
 extern double Z_freq;
 extern double E_act;
@@ -64,7 +65,7 @@ void ComputeEquationOfState(Field& U)
     for(int i=fict;i<Nx+fict-1;i++)
     for(int j=fict;j<Ny+fict-1;j++)
     {
-        double rho=std::max(U[i][j][0],MINGRHO);
+        double rho=std::max(U[i][j][0],1e-6);
 
         double u=U[i][j][1]/rho;
         double v=U[i][j][2]/rho;
@@ -73,7 +74,7 @@ void ComputeEquationOfState(Field& U)
 
         double I=E-0.5*(u*u+v*v);
 
-        double P=(gamma_gas-1.0)*rho*I;
+        double P=(gamm-1.0)*rho*I;
 
         if(P<1e-10) P=1e-10;
 
@@ -97,7 +98,7 @@ void UpdateChemicalReaction(double dt)
         {
             double exponent=-E_act/(Rgas*T);
 
-            if(exponent<-700) exponent=-700;
+            //if(exponent<-700) exponent=-700;
 
             double rate=Z_freq*omega[i][j][0]*exp(exponent);
 
@@ -110,33 +111,28 @@ void UpdateChemicalReaction(double dt)
 }
 
 
-// ИСПРАВЛЕНИЕ 1: знак Q1 и Q2 изменён на правильный.
-// По документу (стр. 8):
-//   Q1(i,j) = VISC · ρ · (V(i,j) − V(i,j+1))  если V(i,j) ≥ V(i,j+1)
-//   Q2(i,j) = VISC · ρ · (U(i,j) − U(i+1,j))  если U(i,j) ≥ U(i+1,j)
-// Вязкость всегда неотрицательна — она диссипирует энергию при сжатии.
 void ComputeArtificialViscosity(Field& U)
 {
-    for(int i=fict;i<Nx+fict-1;i++)
-    for(int j=fict;j<Ny+fict-1;j++)
+    for(int i=fict+1;i<Nx+fict-1;i++)
+    for(int j=fict+1;j<Ny+fict-1;j++)
     {
         double rho=U[i][j][0];
 
         double v=U[i][j][2]/rho;
         double v_up=U[i][j+1][2]/U[i][j+1][0];
 
-        // Сжатие в Z-направлении: v >= v_up
-        if(v_up-v<0)
-            q1[i][j][0]=VISC*rho*(v-v_up);   // ✓ было: (v_up-v) → отрицательное
+       
+        if(v_up-v<=0)
+            q1[i][j][0]=VISC*rho*(v-v_up);   
         else
             q1[i][j][0]=0;
 
         double u=U[i][j][1]/rho;
         double u_r=U[i+1][j][1]/U[i+1][j][0];
 
-        // Сжатие в R-направлении: u >= u_r
-        if(u_r-u<0)
-            q2[i][j][0]=VISC*rho*(u-u_r);    // ✓ было: (u_r-u) → отрицательное
+   
+        if(u_r-u<=0)
+            q2[i][j][0]=VISC*rho*(u-u_r);    
         else
             q2[i][j][0]=0;
 
@@ -148,8 +144,8 @@ void ComputeArtificialViscosity(Field& U)
 
 void UpdateVelocities(Field& U,double dt,double dx,double dy)
 {
-    for(int i=fict;i<Nx+fict-1;i++)
-    for(int j=fict;j<Ny+fict-1;j++)
+    for(int i=fict+1;i<Nx+fict-1;i++)
+    for(int j=fict+1;j<Ny+fict-1;j++)
     {
         double rho=U[i][j][0];
 
@@ -167,14 +163,15 @@ void UpdateVelocities(Field& U,double dt,double dx,double dy)
 
         u_tilde[i][j][0]=
             u-dt/(rho*dx)*(P4-P2+q4[i][j][0]-q2[i][j][0]);
+
     }
 }
 
 
 void UpdateInternalEnergy(Field& U,double dt,double dx,double dy)
 {
-    for(int i=fict;i<Nx+fict-1;i++)
-    for(int j=fict;j<Ny+fict-1;j++)
+    for(int i=fict+1;i<Nx+fict-1;i++)
+    for(int j=fict+1;j<Ny+fict-1;j++)
     {
         double rho=U[i][j][0];
 
@@ -220,101 +217,139 @@ void UpdateInternalEnergy(Field& U,double dt,double dx,double dy)
 }
 
 
-// ИСПРАВЛЕНИЕ 2: добавлен перенос по Y (Z-направление).
-// Ранее TransportMass обрабатывала только грани в R-направлении (по i).
-// По документу (стр. 18-20) необходимо обойти все 4 грани — и по R, и по Z.
+
 void TransportMass(Field& U,double dt,double dx,double dy)
 {
-    for(int i=0;i<NX;i++)
-    for(int j=0;j<NY;j++)
+/*--------------------------------------------------
+  Phase IV: Donor–Acceptor mass transport
+--------------------------------------------------*/
+
+    for(int i=0;i<Nx+2*fict;i++)
+    for(int j=0;j<Ny+2*fict;j++)
     {
-        dMass[i][j][0]=0;
-        dEnergy[i][j][0]=0;
-        dMomentumX[i][j][0]=0;
-        dMomentumY[i][j][0]=0;
-        dOmega[i][j][0]=0;
+        dMass[i][j][0]=0.0;
+        dEnergy[i][j][0]=0.0;
+        dMomentumX[i][j][0]=0.0;
+        dMomentumY[i][j][0]=0.0;
+        dOmega[i][j][0]=0.0;
     }
 
-    // --- Перенос по R (X) --- между (i-1,j) и (i,j)
-    for(int i=fict+1;i<Nx+fict-1;i++)
-    for(int j=fict;j<Ny+fict-1;j++)
+/*-----------------------------------------------
+  Transport (X direction)
+-----------------------------------------------*/
+
+    for(int i=fict+1;i<Nx+fict;i++)
+    for(int j=fict;j<Ny+fict;j++)
     {
-        double u_face=
-        0.5*(u_tilde[i-1][j][0]+u_tilde[i][j][0]);
+        double Um = u_tilde[i-1][j][0];
+        double Un = u_tilde[i][j][0];
 
-        double alpha=u_face*dt/dx;
+        double alpha =
+        (0.5*(Um+Un)*dt/dx)/
+        (1.0+(Um-Un)*dt/dx);
 
-        if(alpha>1) alpha=1;
-        if(alpha<-1) alpha=-1;
+        //if (i == Nx+fict-1) alpha = 0.5*(3*u_tilde[i][j][0]-u_tilde[i-1][j][0]);
+        //if (j == Ny+fict-1) alpha = v_tilde[i][j][0]*dt/dy;
 
-        int donor=(alpha>=0)?i-1:i;
-        int acc=(alpha>=0)?i:i-1;
+        if(alpha>1.0) alpha=1.0;
+        if(alpha<-1.0) alpha=-1.0;
 
-        double rho=U[donor][j][0];
+        int donor = (alpha>=0)? i-1 : i;
+        int acc   = (alpha>=0)? i   : i-1;
 
-        double dm=rho*fabs(alpha);
+        double rho = U[donor][j][0];
 
-        dMass[acc][j][0]+=dm;
-        dMass[donor][j][0]-=dm;
+        double dm = rho * fabs(alpha);
 
-        double momx=U[donor][j][1];
-        double momy=U[donor][j][2];
-        double rhoE=U[donor][j][3];
+        /* mass */
 
-        dMomentumX[acc][j][0]+=momx*fabs(alpha);
-        dMomentumX[donor][j][0]-=momx*fabs(alpha);
+        dMass[acc][j][0]   += dm;
+        dMass[donor][j][0] -= dm;
 
-        dMomentumY[acc][j][0]+=momy*fabs(alpha);
-        dMomentumY[donor][j][0]-=momy*fabs(alpha);
+        /* momentum */
 
-        dEnergy[acc][j][0]+=rhoE*fabs(alpha);
-        dEnergy[donor][j][0]-=rhoE*fabs(alpha);
+        double momx = U[donor][j][0] * u_tilde[donor][j][0];
+        double momy = U[donor][j][0] * v_tilde[donor][j][0];
 
-        double w=omega[donor][j][0];
+        dMomentumX[acc][j][0]   += momx*fabs(alpha);
+        dMomentumX[donor][j][0] -= momx*fabs(alpha);
 
-        dOmega[acc][j][0]+=w*dm;
-        dOmega[donor][j][0]-=w*dm;
+        dMomentumY[acc][j][0]   += momy*fabs(alpha);
+        dMomentumY[donor][j][0] -= momy*fabs(alpha);
+
+        /* energy */
+
+        double rho_d = U[donor][j][0];
+        double E_specific = U[donor][j][3] / rho_d;  // удельная полная энергия E
+
+        dEnergy[acc][j][0]   += E_specific * dm;
+        dEnergy[donor][j][0] -= E_specific * dm;
+
+        /* composition */
+
+        double w = omega[donor][j][0];
+
+        dOmega[acc][j][0]   += w*dm;
+        dOmega[donor][j][0] -= w*dm;
     }
 
-    // --- Перенос по Z (Y) --- между (i,j-1) и (i,j)
-    for(int i=fict;i<Nx+fict-1;i++)
-    for(int j=fict+1;j<Ny+fict-1;j++)
+/*-----------------------------------------------
+  Transport (Y direction)
+-----------------------------------------------*/
+
+    for(int i=fict;i<Nx+fict;i++)
+    for(int j=fict+1;j<Ny+fict;j++)
     {
-        double v_face=
-        0.5*(v_tilde[i][j-1][0]+v_tilde[i][j][0]);
+        double Vm = v_tilde[i][j-1][0];
+        double Vn = v_tilde[i][j][0];
 
-        double beta=v_face*dt/dy;
+        double beta =
+        (0.5*(Vm+Vn)*dt/dy)/
+        (1.0+(Vm-Vn)*dt/dy);
 
-        if(beta>1) beta=1;
-        if(beta<-1) beta=-1;
+        //if (i == Nx+fict-1) beta = 0.5*(3*v_tilde[i][j][0]-v_tilde[i-1][j][0]);
+        //if (j == Ny+fict-1) beta = u_tilde[i][j][0]*dt/dx;
 
-        int donor=(beta>=0)?j-1:j;
-        int acc=(beta>=0)?j:j-1;
+        if(beta>1.0) beta=1.0;
+        if(beta<-1.0) beta=-1.0;
 
-        double rho=U[i][donor][0];
+        int donor = (beta>=0)? j-1 : j;
+        int acc   = (beta>=0)? j   : j-1;
 
-        double dm=rho*fabs(beta);
+        double rho = U[i][donor][0];
 
-        dMass[i][acc][0]+=dm;
-        dMass[i][donor][0]-=dm;
+        double dm = rho * fabs(beta);
 
-        double momx=U[i][donor][1];
-        double momy=U[i][donor][2];
-        double rhoE=U[i][donor][3];
+        /* mass */
 
-        dMomentumX[i][acc][0]+=momx*fabs(beta);
-        dMomentumX[i][donor][0]-=momx*fabs(beta);
+        dMass[i][acc][0]   += dm;
+        dMass[i][donor][0] -= dm;
 
-        dMomentumY[i][acc][0]+=momy*fabs(beta);
-        dMomentumY[i][donor][0]-=momy*fabs(beta);
+        /* momentum */
 
-        dEnergy[i][acc][0]+=rhoE*fabs(beta);
-        dEnergy[i][donor][0]-=rhoE*fabs(beta);
+        double momx = U[i][donor][0] * u_tilde[i][donor][0];
+        double momy = U[i][donor][0] * v_tilde[i][donor][0];
 
-        double w=omega[i][donor][0];
+        dMomentumX[i][acc][0]   += momx*fabs(beta);
+        dMomentumX[i][donor][0] -= momx*fabs(beta);
 
-        dOmega[i][acc][0]+=w*dm;
-        dOmega[i][donor][0]-=w*dm;
+        dMomentumY[i][acc][0]   += momy*fabs(beta);
+        dMomentumY[i][donor][0] -= momy*fabs(beta);
+
+        /* energy */
+
+        double rho_d = U[i][donor][0];
+        double E_specific = U[i][donor][3] / rho_d;  // удельная полная энергия E
+
+        dEnergy[i][acc][0]   += E_specific * dm;
+        dEnergy[i][donor][0] -= E_specific * dm;
+
+        /* composition */
+
+        double w = omega[i][donor][0];
+
+        dOmega[i][acc][0]   += w*dm;
+        dOmega[i][donor][0] -= w*dm;
     }
 }
 
@@ -327,34 +362,23 @@ void ApplyTransport(Field& U)
         double rho_old=U[i][j][0];
 
         double rho_new=rho_old+dMass[i][j][0];
+        if(rho_new < 1e-10) rho_new = 1e-10;
+        double rho_utilde = rho_old * u_tilde[i][j][0];
+        double rho_vtilde = rho_old * v_tilde[i][j][0];
 
-        if(rho_new<MINGRHO) rho_new=MINGRHO;
+        double momx = rho_utilde + dMomentumX[i][j][0];
+        double momy = rho_vtilde + dMomentumY[i][j][0];
+        double rhoE = U[i][j][3] + dEnergy[i][j][0];
 
-        double momx=
-        U[i][j][1]+dMomentumX[i][j][0];
+        U[i][j][0] = rho_new;
+        U[i][j][1] = momx;
+        U[i][j][2] = momy;
+        U[i][j][3] = rhoE;
 
-        double momy=
-        U[i][j][2]+dMomentumY[i][j][0];
-
-        double rhoE=
-        U[i][j][3]+dEnergy[i][j][0];
-
-        double u=momx/rho_new;
-        double v=momy/rho_new;
-
-        double E=rhoE/rho_new;
-
-        double I=E-0.5*(u*u+v*v);
-
-        U[i][j][0]=rho_new;
-        U[i][j][1]=momx;
-        U[i][j][2]=momy;
-        U[i][j][3]=rho_new*(I+0.5*(u*u+v*v));
-
-        if(rho_new>MINGRHO)
+        if(rho_new > MINGRHO)
         {
-            omega[i][j][0]=
-            (omega[i][j][0]*rho_old+dOmega[i][j][0])/rho_new;
+            omega[i][j][0] =
+                (omega[i][j][0]*rho_old + dOmega[i][j][0]) / rho_new;
         }
     }
 }
@@ -368,6 +392,8 @@ void MaderTimeStep(
     double dy)
 {
     Field U;
+
+    BoundCond(W);
 
     ConvertWtoU(W,U,0);
 
@@ -388,4 +414,6 @@ void MaderTimeStep(
     ComputeEquationOfState(U);
 
     ConvertUtoW(W_new,U,0);
+
+    BoundCond(W_new);
 }
