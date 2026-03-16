@@ -1,4 +1,4 @@
-CXX = g++
+CXX = mpic++
 CXXFLAGS = -g -Wall -std=c++17 -I lib -I src
 LDFLAGS =
 

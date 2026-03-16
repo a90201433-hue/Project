@@ -39,12 +39,21 @@ void SaveFieldToCSV(const Field& W,
                     const std::vector<double>& x,
                     const std::vector<double>& y,
                     const double& time,
-                    const std::string& filename) {
+                    const std::string& filename,
+                    bool append) {
 
     size_t Nx_cells = Nx - 1;
     size_t Ny_cells = Ny - 1;
 
-    std::ofstream file(filename);
+    std::ofstream file;
+
+    if (append) 
+        file.open(filename, std::ios::app);
+        
+    else {
+        file.open(filename);
+        file << "t,x,y,rho,u,v,P,e\n";
+    }
 
     if (!file.is_open())
     {
@@ -52,7 +61,7 @@ void SaveFieldToCSV(const Field& W,
         return;
     }
 
-    file << "t,x,y,rho,u,v,P,e\n";
+    
 
     for (size_t i = fict; i < Nx_cells + fict; i++) {
 

@@ -282,9 +282,6 @@ void ReconstructRodionov(const Field& W,
                     W_R[i][j][k] =
                         W_tilde[i][j][k]   - 0.5 * Slope_X[i][j][k];
                 }
-
-
-
             }
         }
     }

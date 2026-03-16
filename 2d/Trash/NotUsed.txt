@@ -1,3 +1,55 @@
+
+// std::map<std::string, LimiterFunction> get_limiter_map() {
+	
+//     std::map<std::string, LimiterFunction> limiter_map = {
+//         {"superbee",   &superbeeLim}, 
+// 		{"vanAlbada1", &vanAlbada1}, 
+// 		{"CHARM",      &CHARM},
+// 		{"HCUS",       &HCUS},
+// 		{"HQUICK",     &HQUICK},
+// 		{"Koren",      &Koren},
+// 		{"minmod",     &minmodLim}, // Часто называют просто minmod
+// 		{"MC",         &MC},        // MC (Monotonized Central)
+// 		{"Osher",      &OsherLim},  // Osher and Chakravarthy
+// 		{"ospre",      &ospre},     // Ospre (Oshers-Sweby-P. R. E.)
+// 		{"smart",      &smart},
+// 		{"Sweby",      &Sweby},
+// 		{"UMIST",      &UMIST},
+// 		{"vanAlbada2", &vanAlbada2},
+// 		{"vanLeer",    &vanLeerLim}
+//     };
+//     return limiter_map;
+// }
+
+// std::map<std::string, RecLimiterFunction> get_rec_limiter_map() {
+	
+//     std::map<std::string, RecLimiterFunction> limiter_map = {
+//         {"superbee",   &superbee}, 
+// 		{"minmod",     &minmod}, // Часто называют просто minmod
+// 		{"vanLeer",    &vanLeer}
+//     };
+//     return limiter_map;
+// }
+
+/*
+void printProgressBar(double t, double t_max) {
+    const int total_cells = 10; // всего 10 ячеек
+    int filled_cells = static_cast<int>((t / t_max) * total_cells);
+
+    std::cout << "\r";
+
+    for (int i = 0; i < total_cells; ++i) {
+        if (i < filled_cells)
+            std::cout << "\033[92m\u25A0\033[0m"; // заполненная ячейка
+        else
+            std::cout <<"▱"; // пустая ячейка
+    }
+
+    int percent = static_cast<int>((t / t_max) * 100);
+    std::cout << " " << percent << "%";
+    std::cout.flush();
+} */
+
 // II. Акустика
   	AcoustPStarAndUStar(W_L_riemann, W_R_riemann, W_star_ac);
   	

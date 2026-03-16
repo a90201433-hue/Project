@@ -165,9 +165,10 @@ void UpdateArrays(Field& W,
 		Euler(W, W_new, x, y, dt);
 	}
 
-    for (int i = fict; i < Nx + fict - 1; i++) {
-        for (int j = fict; j < Ny + fict - 1; j++) {
-			W[i][j] = W_new[i][j];
-        }
-    }
+	std::swap(W, W_new);
+    // for (int i = fict; i < Nx + fict - 1; i++) {
+    //     for (int j = fict; j < Ny + fict - 1; j++) {
+	// 		W[i][j] = W_new[i][j];
+    //     }
+    // }
 }

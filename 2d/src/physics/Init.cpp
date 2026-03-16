@@ -9,6 +9,7 @@
 #include "Types.h"
 
 extern int Nx, Ny;
+extern int Nx_glob, Ny_glob;
 extern int step_fo, step_max, bound_case;
 
 extern double Lx, Ly, t_max, time_fo, x0, gamm, CFL, Q, C1, C2;
@@ -53,8 +54,8 @@ void readConfig(const std::string& config_path) {
 	TVD_solver = scheme["High_order_method"].str;
 	TVD_limiter = scheme["High_order_method"].str;
 
-	Nx = scheme["N_x"].number;
-	Ny = scheme["N_y"].number;
+	Nx_glob = scheme["N_x"].number;
+	Ny_glob = scheme["N_y"].number;
 	Lx = scheme["L_x"].number;
 	Ly = scheme["L_y"].number;
 
@@ -70,33 +71,26 @@ void readConfig(const std::string& config_path) {
 
 }
 
-void Grid(std::vector<double>& x, std::vector<double>& xc,
-		  std::vector<double>& y, std::vector<double>& yc) {
+
+void Grid(std::vector<double>& x, std::vector<double>& y,
+          int offset_x, int offset_y) {
 	
 	// Шаг сетки
-	double dx = Lx / (Nx - 1);
-	double dy = Ly / (Ny - 1);
+	double dx = Lx / (Nx_glob - 1);
+	double dy = Ly / (Ny_glob - 1);
 
 	// Заполняем массивы координат (нужны ли нам центральные?)
-	for (int i = 0; i < Nx + 2*fict; i++) 
-		x[i] = (i - fict)*dx;
-	for (int i = 0; i < Nx + 2*fict - 1; i++) 
-		xc[i] = x[i] + 0.5*dx;
-	
+	for (int i = 0; i < Nx + 2*fict; i++) {
+        int global_i = offset_x + i - fict;
+		x[i] = global_i * dx;
+    }
 
-	for (int i = 0; i < Ny + 2*fict; i++) 
-		y[i] = (i - fict)*dy;
-	for (int i = 0; i < Ny + 2*fict - 1; i++) 
-		yc[i] = y[i] + 0.5*dy;
+	for (int j = 0; j < Ny + 2*fict; j++) {
+        int global_j = offset_y + j - fict;
+        y[j] = global_j * dy;
+    }
 
 }
-
-void InitialZeros(std::vector<std::vector<double>> &W_zeros, int intern_size) {
-	for (int i = 0; i < (int)W_zeros.size(); i++) {
-		W_zeros[i].resize(intern_size, 0.0f);
-	}
-}
-
 
 void InitValues(Field& W, 
 				const std::vector<double>& x, 
@@ -122,8 +116,6 @@ void InitValues(Field& W,
 	
 	// Тест Сода вдоль оси x (константа по y)
 	auto& values = test.root[Test].table;
-	//double dx = Lx / (Nx - 1);
-	//double dy = Ly / (Ny - 1);
 	double rho_L, u_L, P_L;
 	double rho_R, u_R, P_R;
 

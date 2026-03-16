@@ -7,7 +7,8 @@ void SaveFieldToCSV(const Field& W,
                     const std::vector<double>& x,
                     const std::vector<double>& y,
                     const double& time,
-                    const std::string& filename);
+                    const std::string& filename,
+                    bool append);
 
 void SaveFluxToCSV(const Field& Flux,
                    const std::vector<double>& x,
