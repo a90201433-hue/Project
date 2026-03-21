@@ -8,9 +8,10 @@
 #include "FileProcessing.h"
 #include "Reconstruction.h"
 #include "FLIC.h"
+#include "Mader.h"
 
 
-extern double gamm, Lx, Ly, C1, C2;
+extern double gamm, Lx, Ly, C1, C2, T_init, R_gas, M, P_min, E_act, Z_freq, VISC, MINWT, GASW, MINGRHO;
 extern int Nx, Ny, fict;
 
 extern std::string method, solver, time_method;
@@ -154,16 +155,17 @@ void UpdateArrays(Field& W,
 				  std::vector<double> y,
 				  double dt) {
 	
-	if (method == "FLIC") FLIC(W_new, W, x, y, dt);
+	if (method == "FLIC")
+        FLIC(W_new, W, x, y, dt);
+    else if (method == "Mader")
+        Mader(W_new, W, x, y, dt);
+    else if (time_method == "Euler")
+        Euler(W, W_new, x, y, dt);
 
 	// Для остальных методов
 	// else if (time_method == "RK3") {
 	// 	RK3(W_new, W, method, solver, func, fict, N + fict - 1, x, dt, Viscous_flag);
 	// } 
-
-	else if (time_method == "Euler") {
-		Euler(W, W_new, x, y, dt);
-	}
 
 	std::swap(W, W_new);
     // for (int i = fict; i < Nx + fict - 1; i++) {

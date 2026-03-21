@@ -24,7 +24,8 @@ Domain dom; // Локальный характеристики доменчик�
 
 int step_fo, step_max, bound_case;
 
-double Lx, Ly, t_max, time_fo, x0, gamm, CFL, Q, C1, C2;
+double Lx, Ly, t_max, time_fo, x0, gamm, CFL, Q, C1, C2, 
+     T_init, R_gas, M, P_min, E_act, Z_freq, VISC, MINWT, GASW, MINGRHO;
 
 std::string x_left_bound, x_right_bound,
 			y_up_bound, y_down_bound;
@@ -41,8 +42,8 @@ void GetDt(const Field& W,
 		   const std::vector<double>& y, 
 		   double& dt) {
 	
-	double dx = Lx / (Nx - 1);
-	double dy = Ly / (Ny - 1);
+	double dx = Lx / (Nx_glob - 1);
+	double dy = Ly / (Ny_glob - 1);
 
 	double max_lambda_x = 0.0;
     double max_lambda_y = 0.0;

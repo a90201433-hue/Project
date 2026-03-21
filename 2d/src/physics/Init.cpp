@@ -12,7 +12,8 @@ extern int Nx, Ny;
 extern int Nx_glob, Ny_glob;
 extern int step_fo, step_max, bound_case;
 
-extern double Lx, Ly, t_max, time_fo, x0, gamm, CFL, Q, C1, C2;
+extern double Lx, Ly, t_max, time_fo, x0, gamm, CFL, Q, C1, C2,
+				T_init, R_gas, M, P_min, E_act, Z_freq, VISC, MINWT, GASW, MINGRHO;
 
 extern std::string x_left_bound, x_right_bound,
 				   y_up_bound, y_down_bound;
@@ -64,6 +65,17 @@ void readConfig(const std::string& config_path) {
 	x_right_bound = scheme["x_right_bound"].str;
 	y_up_bound = scheme["y_up_bound"].str;
 	y_down_bound = scheme["y_down_bound"].str;
+
+	T_init = scheme["T_init"].number;
+	R_gas = scheme["R_gas"].number;
+	M = scheme["M"].number;
+	P_min = scheme["P_min"].number;
+	E_act = scheme["E_act"].number;
+	Z_freq = scheme["Z_freq"].number;
+	VISC = scheme["VISC"].number;
+	MINWT = scheme["MINWT"].number;
+	GASW = scheme["GASW"].number;
+	MINGRHO = scheme["MINGRHO"].number;
 
 	step_fo = toml.root["recording"].table["step_fo"].number;
 	time_fo = toml.root["recording"].table["time_fo"].number;

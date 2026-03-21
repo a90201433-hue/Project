@@ -20,14 +20,20 @@ void DecomposeProcesses(int p,
     double best_score = std::numeric_limits<double>::max();
 
     if (dim == 2) {
-        double r_grid = (double)global_sizes[0] / global_sizes[1];
+        double Nx = global_sizes[0];
+        double Ny = global_sizes[1];
+
+        double r_grid = std::min(Nx, Ny) / std::max(Nx, Ny);
+
+        double best_score = std::numeric_limits<double>::max();
 
         for (int px = 1; px <= p; px++) {
             if (p % px != 0) continue;
 
             int py = p / px;
 
-            double r_proc = (double)px / py;
+            double r_proc = (double)std::min(px, py) / std::max(px, py);
+
             double score = std::abs(r_grid - r_proc);
 
             if (score < best_score) {
@@ -36,6 +42,12 @@ void DecomposeProcesses(int p,
                 proc_dims[1] = py;
             }
         }
+
+        if (Nx > Ny && proc_dims[0] < proc_dims[1])
+        std::swap(proc_dims[0], proc_dims[1]);
+
+        if (Ny > Nx && proc_dims[1] < proc_dims[0])
+        std::swap(proc_dims[0], proc_dims[1]);
     }
 
     if (dim == 3) {
