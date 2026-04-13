@@ -24,7 +24,7 @@ void BoundCond(Field& W, const Domain& dom) {
     bool up    = (dom.ry == dom.py - 1);
 
     // ---- X границы ----
-    for (size_t j = fict; j < Ny_tot - fict; j++) {
+    for (size_t j = 0; j < Ny_tot; j++) {
         for (size_t g = 0; g < fict; g++) {
 
             // LEFT
@@ -103,21 +103,28 @@ void BoundCond(Field& W, const Domain& dom) {
 }
 
 
-void ExchangeGhostCells(Field& W, const Domain& dom)
-{
-    int left  = (dom.rx > 0) ? dom.rank - 1     : MPI_PROC_NULL;
-    int right = (dom.rx < dom.px - 1) ? dom.rank + 1 : MPI_PROC_NULL;
+void ExchangeGhostCells(Field& W, const Domain& dom) {
+    int left  = MPI_PROC_NULL;
+    int right = MPI_PROC_NULL;
+    int down  = MPI_PROC_NULL;
+    int up    = MPI_PROC_NULL;
 
-    int down  = (dom.ry > 0) ? dom.rank - dom.px : MPI_PROC_NULL;
-    int up    = (dom.ry < dom.py - 1) ? dom.rank + dom.px : MPI_PROC_NULL;
+    if (dom.rx > 0)
+        left = dom.ry * dom.px + (dom.rx - 1);
+
+    if (dom.rx < dom.px - 1)
+        right = dom.ry * dom.px + (dom.rx + 1);
+
+    if (dom.ry > 0)
+        down = (dom.ry - 1) * dom.px + dom.rx;
+
+    if (dom.ry < dom.py - 1)
+        up = (dom.ry + 1) * dom.px + dom.rx;
 
     int Nx_cells = dom.Nx_cells;
     int Ny_cells = dom.Ny_cells;
 
-    // ====================================================
-    // X EXCHANGE
-    // ====================================================
-
+    // Обмен по x
     int count_x = fict * Ny_cells * NEQ;
 
     std::vector<double> send_left(count_x);
@@ -126,7 +133,7 @@ void ExchangeGhostCells(Field& W, const Domain& dom)
     std::vector<double> send_right(count_x);
     std::vector<double> recv_right(count_x);
 
-    // ---- pack left ----
+    // Левые
     int k = 0;
 
     for (int g = 0; g < fict; g++)
@@ -134,15 +141,15 @@ void ExchangeGhostCells(Field& W, const Domain& dom)
     for (int q = 0; q < NEQ; q++)
         send_left[k++] = W[fict + g][j][q];
 
-    // ---- pack right ----
+    // Правые
     k = 0;
 
     for (int g = 0; g < fict; g++)
     for (int j = fict; j < fict + Ny_cells; j++)
     for (int q = 0; q < NEQ; q++)
-        send_right[k++] = W[fict + Nx_cells - fict + g][j][q];;
+        send_right[k++] = W[fict + Nx_cells - 1 + g][j][q];
 
-    // ---- exchange ----
+    // Обмен
     MPI_Sendrecv(send_left.data(), count_x, MPI_DOUBLE,
                  left, 0,
                  recv_right.data(), count_x, MPI_DOUBLE,
@@ -155,7 +162,7 @@ void ExchangeGhostCells(Field& W, const Domain& dom)
                  left, 1,
                  MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-    // ---- unpack right ghost ----
+    // Распаковывем
     if (right != MPI_PROC_NULL) {
 
         k = 0;
@@ -166,7 +173,6 @@ void ExchangeGhostCells(Field& W, const Domain& dom)
             W[Nx_cells + fict + g][j][q] = recv_right[k++];
     }
 
-    // ---- unpack left ghost ----
     if (left != MPI_PROC_NULL) {
 
         k = 0;
@@ -177,10 +183,7 @@ void ExchangeGhostCells(Field& W, const Domain& dom)
             W[g][j][q] = recv_left[k++];
     }
 
-    // ====================================================
-    // Y EXCHANGE
-    // ====================================================
-
+    // Обмен по y
     int count_y = fict * Nx_cells * NEQ;
 
     std::vector<double> send_down(count_y);
@@ -189,7 +192,7 @@ void ExchangeGhostCells(Field& W, const Domain& dom)
     std::vector<double> send_up(count_y);
     std::vector<double> recv_up(count_y);
 
-    // ---- pack down ----
+  
     k = 0;
 
     for (int g = 0; g < fict; g++)
@@ -197,15 +200,15 @@ void ExchangeGhostCells(Field& W, const Domain& dom)
     for (int q = 0; q < NEQ; q++)
         send_down[k++] = W[i][fict + g][q];
 
-    // ---- pack up ----
+
     k = 0;
 
     for (int g = 0; g < fict; g++)
     for (int i = fict; i < fict + Nx_cells; i++)
     for (int q = 0; q < NEQ; q++)
-        send_up[k++] = W[i][Ny_cells + g][q];
+        send_up[k++] = W[i][fict + Ny_cells - 1 + g][q];
 
-    // ---- exchange ----
+
     MPI_Sendrecv(send_down.data(), count_y, MPI_DOUBLE,
                  down, 2,
                  recv_up.data(), count_y, MPI_DOUBLE,
@@ -218,7 +221,7 @@ void ExchangeGhostCells(Field& W, const Domain& dom)
                  down, 3,
                  MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-    // ---- unpack up ghost ----
+
     if (up != MPI_PROC_NULL) {
 
         k = 0;

@@ -41,8 +41,8 @@ void GetDt(const Field& W,
 		   const std::vector<double>& y, 
 		   double& dt) {
 	
-	double dx = Lx / (Nx - 1);
-	double dy = Ly / (Ny - 1);
+	double dx = Lx / (Nx_glob - 1);
+ 	double dy = Ly / (Ny_glob - 1);
 
 	double max_lambda_x = 0.0;
     double max_lambda_y = 0.0;
@@ -132,16 +132,16 @@ int main(int argc, char* argv[]) {
 	int py = proc_dims[1];
 
 	// Эта часть записывала разбиение px, py
-	/* if (rank == 0) {
-		std::ofstream file(base_output / "decomposition.txt");
+	// if (rank == 0) {
+	// 	std::ofstream file(base_output / "decomposition.txt");
 
-		if (!file) {
-			std::cerr << "Cannot open decomposition.txt\n";
-		} else {
-			file << "px = " << px << "\n";
-			file << "py = " << py << "\n";
-		}
-	} */
+	// 	if (!file) {
+	// 		std::cerr << "Cannot open decomposition.txt\n";
+	// 	} else {
+	// 		file << "px = " << px << "\n";
+	// 		file << "py = " << py << "\n";
+	// 	}
+	// } 
 
 	// Определяем локальные размеры наших областей
 	dom = BuildDomain(rank, px, py, Nx_glob, Ny_glob);
@@ -191,7 +191,6 @@ int main(int argc, char* argv[]) {
 
 	double t = 0.0, dt = 1.0;
 
-
 	int step = 0;
 	MPI_Barrier(MPI_COMM_WORLD);
 	t_start = MPI_Wtime();
@@ -216,10 +215,7 @@ int main(int argc, char* argv[]) {
 					dom.x, dom.y,
 					dt);
 
-		// Применение ГУ
 		BoundCond(W, dom);
-
-		// Обмен фиктивными ячейками
 		ExchangeGhostCells(W, dom);
 
 		// Запись
@@ -271,10 +267,25 @@ int main(int argc, char* argv[]) {
 	MPI_Barrier(MPI_COMM_WORLD);
 	t_end = MPI_Wtime();
 
+	double local_time = t_end - t_start;
+	double global_time;
+
+	MPI_Reduce(&local_time, &global_time, 1,
+           MPI_DOUBLE, MPI_MAX,
+           0, MPI_COMM_WORLD);
+
 	if (rank == 0) {
-		std::cout << "Время расчёта: "
-				<< (t_end - t_start)
-				<< " секунд\n";
+
+		fs::path timing_file = "output/timing.csv";
+		bool file_exists = fs::exists(timing_file);
+		std::ofstream file(timing_file, std::ios::app);
+
+		if (!file_exists)
+			file << "p,time\n";
+
+		file << p << "," << global_time << "\n";
+
+		file.close();
 	}
 	if (rank == 0)
 		std::cout << "Завершено успешно." << std::endl;

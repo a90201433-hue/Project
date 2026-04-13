@@ -153,11 +153,13 @@ void InitValues(Field& W,
 	else if (direction == "y") {
 		for (size_t i = fict; i < Nx_tot - fict; i++) {
 			for (size_t j = fict; j < Ny_tot - fict; j++) {
-				double xc = cell_center(i);
-				if (xc < x0)
-					W[j][i] = {rho_L, 0.0, u_L, P_L};
+
+				double yc = 0.5 * (y[j] + y[j+1]);
+
+				if (yc < x0)
+					W[i][j] = {rho_L, 0.0, u_L, P_L};
 				else
-					W[j][i] = {rho_R, 0.0, u_R, P_R};
+					W[i][j] = {rho_R, 0.0, u_R, P_R};
 			}
 		}
 	}

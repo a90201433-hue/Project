@@ -6,9 +6,12 @@
 #include "BoundCond.h"
 #include "Init.h"
 #include "Types.h"
+#include "Domain.h"
 
 extern double gamm, Lx, Ly, C1, C2;
 extern int Nx, Ny, fict;
+
+extern Domain dom;
 
 void FLIC_L(const Field& W,
             Field& W_tilde,
@@ -277,45 +280,69 @@ void FLIC(Field& W_new,
 
     if (!swap) {
         FLIC_L(W, W_tilde, x, y, dt_half, 0);
-        BoundCond(W_tilde);
-        // SaveFieldToCSV(W_tilde, x, y, dt,"data_track/W_tilde0_x.csv");
+        BoundCond(W_tilde, dom);
+		ExchangeGhostCells(W_tilde, dom);
+        // BoundCond(W_tilde);
+
         FLIC_E(W_tilde, W_tmp, x, y, dt_half, 0);
-        BoundCond(W_tmp);
-        // SaveFieldToCSV(W_tmp, x, y, dt, "data_track/W_tmp0_x.csv");
+        BoundCond(W_tmp, dom);
+		ExchangeGhostCells(W_tmp, dom);
+        // BoundCond(W_tmp);
+ 
 
         FLIC_L(W_tmp, W_tilde, x, y, dt, 1);
-        BoundCond(W_tilde);
-        // SaveFieldToCSV(W_tilde, x, y, dt,"data_track/W_tilde1_x.csv");
+        BoundCond(W_tilde, dom);
+		ExchangeGhostCells(W_tilde, dom);
+        // BoundCond(W_tilde);
+        
         FLIC_E(W_tilde, W_tmp_2, x, y, dt, 1);
-        BoundCond(W_tmp_2);
-        // SaveFieldToCSV(W_tmp_2, x, y, dt, "data_track/W_tmp1_x.csv");
+        BoundCond(W_tmp_2, dom);
+		ExchangeGhostCells(W_tmp_2, dom);
+        // BoundCond(W_tmp_2);
+       
 
         FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 0);
-        BoundCond(W_tilde);
-        // SaveFieldToCSV(W_tilde, x, y, dt,"data_track/W_tilde2_x.csv");
+        BoundCond(W_tilde, dom);
+		ExchangeGhostCells(W_tilde, dom);
+        // BoundCond(W_tilde);
+        
         FLIC_E(W_tilde, W_new, x, y, dt_half, 0);
-        BoundCond(W_new);
+        BoundCond(W_new, dom);
+		ExchangeGhostCells(W_new, dom);
+        // BoundCond(W_new);
 
     } else {
         FLIC_L(W, W_tilde, x, y, dt_half, 1);
-        BoundCond(W_tilde);
-        // SaveFieldToCSV(W_tilde, x, y, dt,"data_track/W_tilde0_y.csv");
+        BoundCond(W_tilde, dom);
+		ExchangeGhostCells(W_tilde, dom);
+        // BoundCond(W_tilde);
+        
         FLIC_E(W_tilde, W_tmp, x, y, dt_half, 1);
-        BoundCond(W_tmp);
-        // SaveFieldToCSV(W_tmp, x, y, dt, "data_track/W_tmp0_y.csv");
+        BoundCond(W_tmp, dom);
+		ExchangeGhostCells(W_tmp, dom);
+        // BoundCond(W_tmp);
+
 
         FLIC_L(W_tmp, W_tilde, x, y, dt, 0);
-        BoundCond(W_tilde);
-        // SaveFieldToCSV(W_tilde, x, y, dt,"data_track/W_tilde1_y.csv");
+        BoundCond(W_tilde, dom);
+		ExchangeGhostCells(W_tilde, dom);
+        // BoundCond(W_tilde);
+
         FLIC_E(W_tilde, W_tmp_2, x, y, dt, 0);
-        BoundCond(W_tmp_2);
-        // SaveFieldToCSV(W_tmp_2, x, y, dt, "data_track/W_tmp1_y.csv");
+        BoundCond(W_tmp_2, dom);
+		ExchangeGhostCells(W_tmp_2, dom);
+        // BoundCond(W_tmp_2);
+
 
         FLIC_L(W_tmp_2, W_tilde, x, y, dt_half, 1);
-        BoundCond(W_tilde);
-        // SaveFieldToCSV(W_tilde, x, y, dt,"data_track/W_tilde2_y.csv");
+        BoundCond(W_tilde, dom);
+		ExchangeGhostCells(W_tilde, dom);
+        // BoundCond(W_tilde);
+
         FLIC_E(W_tilde, W_new, x, y, dt_half, 1);
-        BoundCond(W_new);            
+        BoundCond(W_new, dom);
+		ExchangeGhostCells(W_new, dom);
+        // BoundCond(W_new);            
     }
 
     for (int i = fict; i < Nx + fict - 1; i++) {
