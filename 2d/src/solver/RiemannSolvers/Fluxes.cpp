@@ -74,6 +74,7 @@ State HLLFlux(const State& WL,
     return F;
 }
 
+// CHECK: HLLC_SOLVER
 State HLLCFlux(const State& WL,
                const State& WR,
                int dir) {

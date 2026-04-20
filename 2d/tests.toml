@@ -74,10 +74,29 @@ max_t = 0.8
 rho_L = 1.0 
 u_L = 0.0
 P_L = 1.0
+Omega_L = 0.0 
 
 rho_R = 0.125
 u_R = 0.0
 P_R = 0.1
+Omega_R = 0.0 
 
 x_gap = 0.5
 max_t = 0.2
+
+[Mader2]
+rho_L = 2.4533
+u_L = 0.22
+P_L = 0.3562
+Omega_L = 0.0 
+
+rho_R = 1.84
+u_R = 0.0
+P_R = 0.0
+Omega_R = 1.0
+
+x_gap = 0.03
+max_t = 0.2
+
+[Mader3]
+max_t = 4.0

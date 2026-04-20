@@ -46,6 +46,7 @@ void ReconstructKolgan(const Field& W,
                     dWp[k] = W[i][j][k]   - W[i-1][j][k];
                 }
 
+                // CHECK: RECONSTRUCTION
                 State slope;
                 if (rec_limiter == "minmod")
                     slope = Minmod(dWm, dWp);

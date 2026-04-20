@@ -10,6 +10,7 @@
 extern double gamm, Lx, Ly, C1, C2;
 extern int Nx, Ny, fict;
 
+// CHECK: FLIC_LAGRANGE
 void FLIC_L(const Field& W,
             Field& W_tilde,
             const std::vector<double>& x,
@@ -90,7 +91,7 @@ void FLIC_L(const Field& W,
 }
 
 
-
+// CHECK: FLIC_EULER
 void FLIC_E(const Field& W_tilde,
             Field& W_new,
             const std::vector<double>& x,
@@ -144,7 +145,7 @@ void FLIC_E(const Field& W_tilde,
 
                     E_flux_m = W_tilde[up_m][j][1] * E_m;
                 }
-                // обновление 
+                // CHECK: FLIC_CONSERV
                 double rho_new = W_tilde[i][j][0] - dt/dx * (rho_flux - rho_flux_m);
 
                 double momx_new = W_tilde[i][j][0] * W_tilde[i][j][1] - dt/dx * (momx_flux - momx_flux_m);
@@ -215,7 +216,7 @@ void FLIC_E(const Field& W_tilde,
 
                     E_flux_m = W_tilde[i][up_m][2] * E_m;
                 }
-
+                // CHECK: FLIC_CONSERV
                 double rho_new = W_tilde[i][j][0] - dt/dy * (rho_flux - rho_flux_m);
 
                 double momx_new = W_tilde[i][j][0] * W_tilde[i][j][1] - dt/dy * (momx_flux - momx_flux_m);
@@ -244,6 +245,7 @@ void FLIC_E(const Field& W_tilde,
         }
     }
 }
+
 
 void FLIC(Field& W_new, 
 		  const Field& W,
@@ -326,6 +328,8 @@ void FLIC(Field& W_new,
     }
 
     swap = !swap;
+
+    
 
     return;
 }

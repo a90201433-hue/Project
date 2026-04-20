@@ -1,5 +1,5 @@
 CXX = mpic++
-CXXFLAGS = -g -Wall -std=c++17 -I lib -I src
+CXXFLAGS = -DOMPI_SKIP_MPICXX -g -Wall -std=c++17 -I lib -I src
 LDFLAGS =
 
 SRCDIR = src

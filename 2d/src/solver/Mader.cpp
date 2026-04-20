@@ -7,357 +7,422 @@
 #include "Init.h"
 #include "Types.h"
 
-extern double gamm, Lx, Ly, T_init, R_gas, M, P_min, E_act, Z_freq, VISC, MINWT, GASW, MINGRHO;
+extern double gamm, Lx, Ly, T_init, R_gas, M, P_min, E_act, Z_freq,
+              VISC, MINWT, GASW, MINGRHO, Q_chem;
 extern int Nx, Ny, fict;
+extern Field mass_fraction;
+extern std::vector<std::vector<bool>> reacted;
 
-void EOS(Field rho, Field I, Field& P, Field& T) {
-    // Тут проблема, в методе Мейдера на вход поступает внутренняя энергия, а не давление
-    // Если мы будем считать из W внутреннюю энергию, а из нее давление
-    // То получится масло масялное, давление будет вычисляться само через себя
-    // Хз пока, что с этим делать, поэтому я пока оно само через себя
-    for (int i = fict; i < Nx + fict - 1; i++) {
-        for (int j = fict; j < Ny + fict - 1; j++) {
-            P[i][j][0] = (((gamm - 1.0) * rho[i][j][0] * I[i][j][0]) < P_min) ? P_min : ((gamm - 1.0) * rho[i][j][0] * I[i][j][0]);
-            T[i][j][0] = P[i][j][0] / (rho[i][j][0] * R_gas / M);
+static constexpr double WALL_RHO = 100.0;
+
+static inline bool IsWall(double rho) { return rho > WALL_RHO; }
+
+// CHECK: MADER_EOS
+static void EOS(const Field& W,
+                std::vector<std::vector<double>>& P,
+                std::vector<std::vector<double>>& T,
+                std::vector<std::vector<double>>& I,
+                int Nx_tot, int Ny_tot)
+{
+    for (int i = 0; i < Nx_tot; i++) {
+        for (int j = 0; j < Ny_tot; j++) {
+            double rho = std::max(W[i][j][0], 1e-14);
+            double p   = W[i][j][NEQ - 1];
+            I[i][j]    = p / ((gamm - 1.0) * rho);
+            P[i][j]    = std::max((gamm - 1.0) * rho * I[i][j], P_min);
+            T[i][j]    = P[i][j] / (rho * R_gas * 1e-5 / M);
         }
     }
 }
 
-void Arrenius(Field& mass_fraction, Field T, double dt, int Nx_tot, int Ny_tot) {
-    // Здесь я пока полностью заигнорила проверку условия на ложную детонацию, которая зависит от количества
-    // пройденных циклов по времени
-    Field mass_fraction_new(Nx_tot, std::vector<State>(Ny_tot));
+// CHECK: MADER_ARRHENIUS
+static void ChemicalKinetics(const std::vector<std::vector<double>>& P,
+                             const std::vector<std::vector<double>>& rho,
+                             const std::vector<std::vector<double>>& T,
+                             std::vector<std::vector<double>>& I,
+                             int Nx_tot, int Ny_tot)
+{
+    const double P_threshold = 0.05;
+
     for (int i = fict; i < Nx + fict - 1; i++) {
         for (int j = fict; j < Ny + fict - 1; j++) {
-            mass_fraction_new[i][j][0] = mass_fraction[i][j][0] - dt * Z_freq * mass_fraction[i][j][0] * exp(-E_act / (R_gas * T[i][j][0]));
-            mass_fraction_new[i][j][0] = (mass_fraction_new[i][j][0] < GASW && T[i][j][0] < MINWT) ? 0.0 : mass_fraction_new[i][j][0];
-        }
-    }
-    for (int i = fict; i < Nx + fict - 1; i++) {
-        for (int j = fict; j < Ny + fict - 1; j++) {
-            mass_fraction[i][j][0] = mass_fraction_new[i][j][0];
+            if (IsWall(rho[i][j])) continue;
+            if (reacted[i][j]) continue;
+            double mf = mass_fraction[i][j][0];
+            // double t = T[i][j];
+            if (mf <= GASW) { reacted[i][j] = true; continue; }
+            //if (t <= MINWT) { reacted[i][j] = true; continue; }
+
+            if (P[i][j] > P_threshold) {
+                I[i][j]               += Q_chem * mf;
+                mass_fraction[i][j][0] = 0.0;
+                reacted[i][j]          = true;
+            }
         }
     }
 }
 
-void Viscosity(Field& q1, Field& q2, Field& q3, Field& q4, Field rho, Field u, Field v) {
-    for (int i = fict; i < Nx + fict - 1; i++) {
-        for (int j = fict; j < Ny + fict - 1; j++) {
-            q1[i][j][0] = (v[i][j][0] >= v[i][j + 1][0]) ? VISC * rho[i][j][0] * (v[i][j][0] - v[i][j + 1][0]) : 0.0;
-            q2[i][j][0] = (u[i][j][0] >= u[i + 1][j][0]) ? VISC * rho[i][j][0] * (u[i][j][0] - u[i + 1][j][0]) : 0.0;
-        }
-    }
+// CHECK: MADER_VISC
+static void ComputeViscosity(const std::vector<std::vector<double>>& U,
+                              const std::vector<std::vector<double>>& V,
+                              const std::vector<std::vector<double>>& rho,
+                              std::vector<std::vector<double>>& Q1,
+                              std::vector<std::vector<double>>& Q2,
+                              std::vector<std::vector<double>>& Q3,
+                              std::vector<std::vector<double>>& Q4,
+                              int Nx_tot, int Ny_tot)
+{
     for (int i = fict; i < Nx + fict - 1; i++)
-    for (int j = fict; j < Ny + fict - 1; j++) {
-        q3[i][j][0] = (j > fict) ? q1[i][j-1][0] : 0.0;
-        q4[i][j][0] = (i > fict) ? q2[i-1][j][0] : 0.0;
-    }
+        for (int j = fict; j < Ny + fict - 1; j++) {
+            if (IsWall(rho[i][j])) { Q1[i][j]=Q2[i][j]=0.0; continue; }
+
+            if (!IsWall(rho[i][j+1]) && V[i][j] >= V[i][j+1])
+                Q1[i][j] = VISC * rho[i][j] * (V[i][j] - V[i][j+1]);
+            else
+                Q1[i][j] = 0.0;
+
+            if (!IsWall(rho[i+1][j]) && U[i][j] >= U[i+1][j])
+                Q2[i][j] = VISC * rho[i][j] * (U[i][j] - U[i+1][j]);
+            else
+                Q2[i][j] = 0.0;
+        }
+    for (int i = fict; i < Nx + fict - 1; i++)
+        for (int j = fict; j < Ny + fict - 1; j++) {
+            Q3[i][j] = (j > fict) ? Q1[i][j-1] : 0.0;
+            Q4[i][j] = (i > fict) ? Q2[i-1][j] : 0.0;
+        }
 }
 
-void VelocityTilde(Field& u_tilde, Field& v_tilde, Field P, Field rho, const std::vector<double>& x, const std::vector<double>& y, Field q1, Field q2, Field q3, Field q4, Field u, Field v, double dt) {
-    for (int i = fict; i < Nx + fict - 1; i++) {
+// CHECK: MADER_VELOCITY
+static void VelocityTilde(const std::vector<std::vector<double>>& U,
+                           const std::vector<std::vector<double>>& V,
+                           const std::vector<std::vector<double>>& P,
+                           const std::vector<std::vector<double>>& rho,
+                           const std::vector<std::vector<double>>& Q1,
+                           const std::vector<std::vector<double>>& Q2,
+                           const std::vector<std::vector<double>>& Q3,
+                           const std::vector<std::vector<double>>& Q4,
+                           std::vector<std::vector<double>>& U_tilde,
+                           std::vector<std::vector<double>>& V_tilde,
+                           const std::vector<double>& x,
+                           const std::vector<double>& y,
+                           double dt, int Nx_tot, int Ny_tot)
+{
+    for (int i = fict; i < Nx + fict - 1; i++)
         for (int j = fict; j < Ny + fict - 1; j++) {
-            double P1 = P[i][j - 1][0];
-            double P2 = P[i - 1][j][0];
-            double P3 = P[i][j + 1][0];
-            double P4 = P[i + 1][j][0];
-
-            double dx = x[i] - x[i - 1];
-            double dy = y[j] - y[j - 1];
-
-            v_tilde[i][j][0] = v[i][j][0] - dt / (rho[i][j][0] * 2.0 * dy) * ((P3 - P1) + (q3[i][j][0] - q1[i][j][0]));
-            u_tilde[i][j][0] = u[i][j][0] - dt / (rho[i][j][0] * 2.0 * dx) * ((P4 - P2) + (q4[i][j][0] - q2[i][j][0]));
+            if (IsWall(rho[i][j])) {
+                U_tilde[i][j] = 0.0;
+                V_tilde[i][j] = 0.0;
+                continue;
+            }
+            double dR = x[i] - x[i-1];
+            double dZ = y[j] - y[j-1];
+            double r  = std::max(rho[i][j], 1e-14);
+            V_tilde[i][j] = V[i][j] - dt / (r * 2.0 * dZ) * ((P[i][j+1]-P[i][j-1]) + (Q3[i][j]-Q1[i][j]));
+            U_tilde[i][j] = U[i][j] - dt / (r * 2.0 * dR) * ((P[i+1][j]-P[i-1][j]) + (Q4[i][j]-Q2[i][j]));
         }
-    }
 }
 
-void ZIPEnergy(Field I, Field& I_tilde, Field P, double dt, Field rho, Field u, Field u_tilde, Field v, Field v_tilde, Field q1, Field q2, Field q3, Field q4, const std::vector<double>& x, const std::vector<double>& y) {
-    // Здесь только уравнение сосотояния идеального газа для I и P!
-    for (int i = fict; i < Nx + fict - 1; i++) {
+// CHECK: MADER_ZIP
+static void ZIPEnergy(const std::vector<std::vector<double>>& I,
+                       std::vector<std::vector<double>>& I_tilde,
+                       const std::vector<std::vector<double>>& P,
+                       const std::vector<std::vector<double>>& rho,
+                       const std::vector<std::vector<double>>& U,
+                       const std::vector<std::vector<double>>& V,
+                       const std::vector<std::vector<double>>& U_tilde,
+                       const std::vector<std::vector<double>>& V_tilde,
+                       const std::vector<std::vector<double>>& Q1,
+                       const std::vector<std::vector<double>>& Q2,
+                       const std::vector<std::vector<double>>& Q3,
+                       const std::vector<std::vector<double>>& Q4,
+                       const std::vector<double>& x,
+                       const std::vector<double>& y,
+                       double dt, int Nx_tot, int Ny_tot)
+{
+    for (int i = fict; i < Nx + fict - 1; i++)
         for (int j = fict; j < Ny + fict - 1; j++) {
-            double U1 = u[i - 1][j][0] + u_tilde[i - 1][j][0];
-            double U2 = u[i + 1][j][0] + u_tilde[i + 1][j][0];
-            double V1 = v[i][j - 1][0] + v_tilde[i][j - 1][0];
-            double V2 = v[i][j + 1][0] + v_tilde[i][j + 1][0];
-            double T3 = u[i][j][0] + u_tilde[i][j][0];
-            double T1 = v[i][j][0] + v_tilde[i][j][0];
-            double dx = x[i] - x[i - 1];
-            double dy = y[j] - y[j - 1];
+            if (IsWall(rho[i][j])) { I_tilde[i][j] = I[i][j]; continue; }
+            double dR = x[i] - x[i-1];
+            double dZ = y[j] - y[j-1];
+            double r  = std::max(rho[i][j], 1e-14);
 
-            I_tilde[i][j][0] = I[i][j][0] - dt / (4 * rho[i][j][0]) * ((P[i][j][0] / dx) * (U2 - U1) +
-                                                                        (q4[i][j][0] / dx) * (U2 - T3) +
-                                                                        (q2[i][j][0] / dx) * (T3 - U1) +
-                                                                        (P[i][j][0] / dy) * (V2 - V1) +
-                                                                        (q3[i][j][0] / dy) * (V2 - T1) +
-                                                                        (q1[i][j][0] / dy) * (T1 - V1));
+            double U1 = U[i-1][j] + U_tilde[i-1][j];
+            double U2 = U[i+1][j] + U_tilde[i+1][j];
+            double V1 = V[i][j-1] + V_tilde[i][j-1];
+            double V2 = V[i][j+1] + V_tilde[i][j+1];
+            double T3 = U[i][j]   + U_tilde[i][j];
+            double T1 = V[i][j]   + V_tilde[i][j];
+
+            double zip = (P[i][j]/dR)*(U2-U1)
+                       + (Q4[i][j]/dR)*(U2-T3)
+                       + (Q2[i][j]/dR)*(T3-U1)
+                       + (P[i][j]/dZ)*(V2-V1)
+                       + (Q3[i][j]/dZ)*(V2-T1)
+                       + (Q1[i][j]/dZ)*(T1-V1);
+
+            I_tilde[i][j] = std::max(I[i][j] - dt/(4.0*r)*zip, 0.0);
         }
-    }
 }
 
-void ChangingFluxes(Field& alpha, Field& beta, Field& DM, Field& DE, Field& DW, Field& DPU, Field& DPV, Field u_tilde, Field v_tilde, const std::vector<double>& x, const std::vector<double>& y, double dt, Field rho, Field I_tilde, Field u, Field v, Field mass_fraction) {
+
+
+
+static void TransportAndRepartition(
+    std::vector<std::vector<double>>& rho,
+    std::vector<std::vector<double>>& U,
+    std::vector<std::vector<double>>& V,
+    std::vector<std::vector<double>>& I,
+    const std::vector<std::vector<double>>& U_tilde,
+    const std::vector<std::vector<double>>& V_tilde,
+    const std::vector<std::vector<double>>& I_tilde,
+    const std::vector<double>& x,
+    const std::vector<double>& y,
+    double dt, int Nx_tot, int Ny_tot)
+{
+    std::vector<std::vector<double>> DM (Nx_tot, std::vector<double>(Ny_tot, 0.0));
+    std::vector<std::vector<double>> DE (Nx_tot, std::vector<double>(Ny_tot, 0.0));
+    std::vector<std::vector<double>> DW (Nx_tot, std::vector<double>(Ny_tot, 0.0));
+    std::vector<std::vector<double>> DPU(Nx_tot, std::vector<double>(Ny_tot, 0.0));
+    std::vector<std::vector<double>> DPV(Nx_tot, std::vector<double>(Ny_tot, 0.0));
+
+    // CHECK: MADER_DONOR
     for (int i = fict; i < Nx + fict - 1; i++) {
         for (int j = fict; j < Ny + fict - 1; j++) {
-            double dx = x[i] - x[i - 1];
-            double dy = y[j] - y[j - 1];
 
-            alpha[i][j][0] = (0.5 * (u_tilde[i - 1][j][0] + u_tilde[i][j][0]) * dt / dx) / (1 + (u_tilde[i - 1][j][0] - u_tilde[i][j][0]) * dt / dx);
-            beta[i][j][0] = (0.5 * (v_tilde[i][j - 1][0] + v_tilde[i][j][0]) * dt / dy) / (1 + (v_tilde[i][j - 1][0] - v_tilde[i][j][0]) * dt / dy);
- 
-            if (alpha[i][j][0] >= 0) {
-                double DMASS = rho[i - 1][j][0] * std::abs(alpha[i][j][0]);
- 
-                DM[i][j][0] += DMASS;
-                DM[i - 1][j][0] -= DMASS;
+            if (IsWall(rho[i][j])) continue;
 
-                DE[i][j][0] += DMASS * (I_tilde[i - 1][j][0] + 0.5 * (u_tilde[i - 1][j][0] * u_tilde[i - 1][j][0] + v_tilde[i - 1][j][0] * v_tilde[i - 1][j][0]));
-                DE[i - 1][j][0] -= DMASS * (I_tilde[i - 1][j][0] + 0.5 * (u_tilde[i - 1][j][0] * u_tilde[i - 1][j][0] + v_tilde[i - 1][j][0] * v_tilde[i - 1][j][0]));
-            
-                DPU[i][j][0] += DMASS * u_tilde[i - 1][j][0];
-                DPU[i - 1][j][0] -= DMASS * u_tilde[i - 1][j][0];
+            double dR = x[i] - x[i-1];
+            double dZ = y[j] - y[j-1];
 
-                DPV[i][j][0] += DMASS * v_tilde[i - 1][j][0];
-                DPV[i - 1][j][0] -= DMASS * v_tilde[i - 1][j][0];
-            
-                DW[i][j][0] += DMASS * mass_fraction[i - 1][j][0];
-                DW[i - 1][j][0] -= DMASS * mass_fraction[i - 1][j][0];
+            {
+                bool skip_r = (i > fict && IsWall(rho[i-1][j]));
+                if (!skip_r) 
+                {
+                    double denom = 1.0 + (U_tilde[i-1][j] - U_tilde[i][j]) * dt / dR;
+                    if (std::abs(denom) < 1e-14) denom = (denom >= 0) ? 1e-14 : -1e-14;
+                    double alpha = 0.5*(U_tilde[i-1][j]+U_tilde[i][j])*dt/dR / denom;
+
+                    int di = (alpha >= 0.0) ? i-1 : i;
+                    int ai = (alpha >= 0.0) ? i   : i-1;
+
+                    if (!IsWall(rho[di][j])) 
+                    {
+                        double rho_d = std::max(rho[di][j], 1e-14);
+                        double DMASS = rho_d * std::abs(alpha);
+                        double E_d   = I_tilde[di][j] + 0.5*(U_tilde[di][j]*U_tilde[di][j] + V_tilde[di][j]*V_tilde[di][j]);
+                        double mf_d  = mass_fraction[di][j][0];
+
+                        // CHECK: SHARGATOV 
+                        double mf_transfer = (reacted[ai][j] || reacted[di][j]) ? 0.0 : mf_d;
+
+                        DM [ai][j] += DMASS;       
+                        DM [di][j] -= DMASS;
+                        DE [ai][j] += E_d*DMASS;   
+                        DE [di][j] -= E_d*DMASS;
+                        DPU[ai][j] += U_tilde[di][j]*DMASS;
+                        DPU[di][j] -= U_tilde[di][j]*DMASS;
+                        DPV[ai][j] += V_tilde[di][j]*DMASS;
+                        DPV[di][j] -= V_tilde[di][j]*DMASS;
+                        DW [ai][j] += mf_transfer*DMASS;
+                        DW [di][j] -= mf_transfer*DMASS;
+                    }
+                }
             }
-            if (alpha[i][j][0] < 0) {
-                double DMASS = rho[i][j][0] * std::abs(alpha[i][j][0]);
 
-                DM[i][j][0] -= DMASS;
-                DM[i - 1][j][0] += DMASS;
+            {
+                bool skip_z = (j > fict && IsWall(rho[i][j-1]));
+                if (!skip_z)
+                {
+                    double denom = 1.0 + (V_tilde[i][j-1] - V_tilde[i][j]) * dt / dZ;
+                    if (std::abs(denom) < 1e-14) denom = (denom >= 0) ? 1e-14 : -1e-14;
+                    double beta = 0.5*(V_tilde[i][j-1]+V_tilde[i][j])*dt/dZ / denom;
 
-                DE[i][j][0] -= DMASS * (I_tilde[i][j][0] + 0.5 * (u_tilde[i][j][0] * u_tilde[i][j][0] + v_tilde[i][j][0] * v_tilde[i][j][0]));
-                DE[i - 1][j][0] += DMASS * (I_tilde[i][j][0] + 0.5 * (u_tilde[i][j][0] * u_tilde[i][j][0] + v_tilde[i][j][0] * v_tilde[i][j][0]));
-            
-                DPU[i][j][0] -= DMASS * u_tilde[i][j][0];
-                DPU[i - 1][j][0] += DMASS * u_tilde[i][j][0];
+                    int dj = (beta >= 0.0) ? j-1 : j;
+                    int aj = (beta >= 0.0) ? j   : j-1;
 
-                DPV[i][j][0] -= DMASS * v_tilde[i][j][0];
-                DPV[i - 1][j][0] += DMASS * v_tilde[i][j][0];
-            
-                DW[i][j][0] -= DMASS * mass_fraction[i][j][0];
-                DW[i - 1][j][0] += DMASS * mass_fraction[i][j][0];
-            }
-            if (beta[i][j][0] >= 0) {
-                double DMASS = rho[i][j - 1][0] * std::abs(beta[i][j][0]);
+                    if (!IsWall(rho[i][dj]))
+                    {
+                        double rho_d = std::max(rho[i][dj], 1e-14);
+                        double DMASS = rho_d * std::abs(beta);
+                        double E_d   = I_tilde[i][dj]
+                                    + 0.5*(U_tilde[i][dj]*U_tilde[i][dj]
+                                    + V_tilde[i][dj]*V_tilde[i][dj]);
+                        double mf_d  = mass_fraction[i][dj][0];
 
-                DM[i][j][0] += DMASS;
-                DM[i][j - 1][0] -= DMASS;
-            
-                DE[i][j][0] += DMASS * (I_tilde[i][j - 1][0] + 0.5 * (u_tilde[i][j - 1][0] * u_tilde[i][j - 1][0] + v_tilde[i][j - 1][0] * v_tilde[i][j - 1][0]));
-                DE[i][j - 1][0] -= DMASS * (I_tilde[i][j - 1][0] + 0.5 * (u_tilde[i][j - 1][0] * u_tilde[i][j - 1][0] + v_tilde[i][j - 1][0] * v_tilde[i][j - 1][0]));
-            
-                DPU[i][j][0] += DMASS * u_tilde[i][j - 1][0];
-                DPU[i][j - 1][0] -= DMASS * u_tilde[i][j - 1][0];
+                        // CHECK: SHARGATOV 
+                        double mf_transfer = (reacted[i][aj] || reacted[i][dj]) ? 0.0 : mf_d;
 
-                DPV[i][j][0] += DMASS * v_tilde[i][j - 1][0];
-                DPV[i][j - 1][0] -= DMASS * v_tilde[i][j - 1][0];
-            
-                DW[i][j][0] += DMASS * mass_fraction[i][j - 1][0];
-                DW[i][j - 1][0] -= DMASS * mass_fraction[i][j - 1][0];
-            }
-            if (beta[i][j][0] < 0) {
-                double DMASS = rho[i][j][0] * std::abs(beta[i][j][0]);
-
-                DM[i][j][0] -= DMASS;
-                DM[i][j - 1][0] += DMASS;
-            
-                DE[i][j][0] -= DMASS * (I_tilde[i][j][0] + 0.5 * (u_tilde[i][j][0] * u_tilde[i][j][0] + v_tilde[i][j][0] * v_tilde[i][j][0]));
-                DE[i][j - 1][0] += DMASS * (I_tilde[i][j][0] + 0.5 * (u_tilde[i][j][0] * u_tilde[i][j][0] + v_tilde[i][j][0] * v_tilde[i][j][0]));
-            
-                DPU[i][j][0] -= DMASS * u_tilde[i][j][0];
-                DPU[i][j - 1][0] += DMASS * u_tilde[i][j][0];
-
-                DPV[i][j][0] -= DMASS * v_tilde[i][j][0];
-                DPV[i][j - 1][0] += DMASS * v_tilde[i][j][0];
-            
-                DW[i][j][0] -= DMASS * mass_fraction[i][j][0];
-                DW[i][j - 1][0] += DMASS * mass_fraction[i][j][0];
+                        DM [i][aj] += DMASS;
+                        DM [i][dj] -= DMASS;
+                        DE [i][aj] += E_d*DMASS;   
+                        DE [i][dj] -= E_d*DMASS;
+                        DPU[i][aj] += U_tilde[i][dj]*DMASS;
+                        DPU[i][dj] -= U_tilde[i][dj]*DMASS;
+                        DPV[i][aj] += V_tilde[i][dj]*DMASS;
+                        DPV[i][dj] -= V_tilde[i][dj]*DMASS;
+                        DW [i][aj] += mf_transfer*DMASS;
+                        DW [i][dj] -= mf_transfer*DMASS;
+                    }
+                }
             }
         }
     }
-    for (int j = fict; j < Ny + fict - 1; j++) {
-        int i = Nx + fict - 2; 
-        double dx = x[i] - x[i-1];
-        
-        double alpha_right = u_tilde[i][j][0] * dt / dx;
-        
-        if (alpha_right > 0) { 
-            double DMASS = rho[i][j][0] * alpha_right;
-            double E_d = I_tilde[i][j][0] + 0.5*(u_tilde[i][j][0] * u_tilde[i][j][0] + v_tilde[i][j][0] * v_tilde[i][j][0]);
-            DM[i][j][0]  -= DMASS;
-            DE[i][j][0]  -= E_d * DMASS;
-            DPU[i][j][0] -= u_tilde[i][j][0] * DMASS;
-            DPV[i][j][0] -= v_tilde[i][j][0] * DMASS;
-            DW[i][j][0]  -= mass_fraction[i][j][0] * DMASS;
-        }
-    }
-    for (int i = fict; i < Nx + fict - 1; i++) {
-        int j = Ny + fict - 2;
-        double dy = y[j] - y[j-1];
-        
-        double beta_top = v_tilde[i][j][0] * dt / dy;
-        
-        if (beta_top > 0) {
-            double DMASS = rho[i][j][0] * beta_top;
-            double E_d = I_tilde[i][j][0] + 0.5*(u_tilde[i][j][0] * u_tilde[i][j][0] + v_tilde[i][j][0] * v_tilde[i][j][0]);
-            DM[i][j][0]  -= DMASS;
-            DE[i][j][0]  -= E_d * DMASS;
-            DPU[i][j][0] -= u_tilde[i][j][0] * DMASS;
-            DPV[i][j][0] -= v_tilde[i][j][0] * DMASS;
-            DW[i][j][0]  -= mass_fraction[i][j][0] * DMASS;
-        }
-    }
-}
 
-void Repartition(Field& rho, Field& u, Field& v, Field& I, Field& mass_fraction, Field I_tilde, Field u_tilde, Field v_tilde, Field DM, Field DE, Field DW, Field DPU, Field DPV) {
+    // CHECK: MADER_REPARTITION
+
     for (int i = fict; i < Nx + fict - 1; i++) {
         for (int j = fict; j < Ny + fict - 1; j++) {
-            double rho_new = rho[i][j][0] + DM[i][j][0];
 
+            if (IsWall(rho[i][j])) continue;
+
+            double rho_new = rho[i][j] + DM[i][j];
             if (rho_new <= 1e-12) {
-                rho[i][j][0] = 0.0;
-                u[i][j][0] = 0.0;
-                v[i][j][0] = 0.0;
-                I[i][j][0] = 0.0;
+                rho[i][j] = MINGRHO; 
+                U[i][j] = 0.0; 
+                V[i][j] = 0.0;
+                I[i][j]   = 0.0; 
                 mass_fraction[i][j][0] = 0.0;
                 continue;
             }
 
-            double u_new = (rho[i][j][0] * u_tilde[i][j][0] + DPU[i][j][0]) / rho_new;
-            double v_new = (rho[i][j][0] * v_tilde[i][j][0] + DPV[i][j][0]) / rho_new;
-            double E = I_tilde[i][j][0] + 0.5 * (u_tilde[i][j][0] * u_tilde[i][j][0] + v_tilde[i][j][0] * v_tilde[i][j][0]);
-            double I_new = (rho[i][j][0] * E + DE[i][j][0]) / rho_new - 0.5 * (u_new * u_new + v_new * v_new);
-            double mass_fraction_new = (rho[i][j][0] * mass_fraction[i][j][0] + DW[i][j][0]) / rho_new;
+            double U_new = (rho[i][j]*U_tilde[i][j] + DPU[i][j]) / rho_new;
+            double V_new = (rho[i][j]*V_tilde[i][j] + DPV[i][j]) / rho_new;
+            double E_old = I_tilde[i][j] + 0.5*(U_tilde[i][j]*U_tilde[i][j]+V_tilde[i][j]*V_tilde[i][j]);
+            double I_new = std::max((rho[i][j]*E_old + DE[i][j])/rho_new - 0.5*(U_new*U_new + V_new*V_new), 0.0);
+            double mf_new = (rho[i][j]*mass_fraction[i][j][0] + DW[i][j]) / rho_new;
 
-            rho[i][j][0] = rho_new;
-            u[i][j][0] = u_new;
-            v[i][j][0] = v_new;
-            I[i][j][0] = I_new;
-            mass_fraction[i][j][0] = mass_fraction_new;
+            rho[i][j] = rho_new;
+            U[i][j]   = U_new;
+            V[i][j]   = V_new;
+            I[i][j]   = I_new;
+            mass_fraction[i][j][0] = reacted[i][j] ? 0.0 : std::max(mf_new, 0.0);
         }
     }
 }
 
 
-void Mader(Field& W_new, const Field& W, const std::vector<double>& x, const std::vector<double>& y, double dt) {
+static void FillGhost(std::vector<std::vector<double>>& F, int Nx_tot, int Ny_tot)
+{
+    int il = fict, ir = Nx + fict - 2;
+    int jb = fict, jt = Ny + fict - 2;
+    for (int j = 0; j < Ny_tot; j++)
+        for (int g = 0; g < fict; g++) {
+            F[g][j]          = F[il][j];
+            F[Nx_tot-1-g][j] = F[ir][j];
+        }
+    for (int i = 0; i < Nx_tot; i++)
+        for (int g = 0; g < fict; g++) {
+            F[i][g]          = F[i][jb];
+            F[i][Ny_tot-1-g] = F[i][jt];
+        }
+}
 
+static void FillGhostMF(int Nx_tot, int Ny_tot)
+{
+    int il = fict, ir = Nx + fict - 2;
+    int jb = fict, jt = Ny + fict - 2;
+    for (int j = 0; j < Ny_tot; j++)
+        for (int g = 0; g < fict; g++) {
+            mass_fraction[g][j]          = mass_fraction[il][j];
+            mass_fraction[Nx_tot-1-g][j] = mass_fraction[ir][j];
+        }
+    for (int i = 0; i < Nx_tot; i++)
+        for (int g = 0; g < fict; g++) {
+            mass_fraction[i][g]          = mass_fraction[i][jb];
+            mass_fraction[i][Ny_tot-1-g] = mass_fraction[i][jt];
+        }
+}
+
+
+void Mader(Field& W_new, const Field& W,
+           const std::vector<double>& x,
+           const std::vector<double>& y,
+           double dt)
+{
     int Nx_tot = Nx + 2*fict - 1;
     int Ny_tot = Ny + 2*fict - 1;
 
-    Field mass_fraction(Nx_tot, std::vector<State>(Ny_tot, {1.0, 0.0, 0.0, 0.0}));
-    Field rho(Nx_tot, std::vector<State>(Ny_tot));
-    for (int i = 0; i < W.size(); i++) {
-        for (int j = 0; j < W[i].size(); j++) {
-            rho[i][j] = {};
-            rho[i][j][0] = W[i][j][0];
-        }
-    }
-    Field P(Nx_tot, std::vector<State>(Ny_tot));
-    for (int i = 0; i < W.size(); i++) {
-        for (int j = 0; j < W[i].size(); j++) {
-            P[i][j] = {};
-            P[i][j][0] = W[i][j][NEQ - 1];
-        }
-    }
-    Field I(Nx_tot, std::vector<State>(Ny_tot));
-    for (int i = 0; i < W.size(); i++) {
-        for (int j = 0; j < W[i].size(); j++) {
-            I[i][j] = {};
-            I[i][j][0] = W[i][j][NEQ-1] / ((gamm - 1.0) * W[i][j][0]);
-        }
-    }
-    Field T(Nx_tot, std::vector<State>(Ny_tot, {T_init, 0.0, 0.0, 0.0}));
-    Field q1(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
-    Field q2(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
-    Field q3(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
-    Field q4(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
-    Field u(Nx_tot, std::vector<State>(Ny_tot));
-    for (int i = 0; i < W.size(); i++) {
-        for (int j = 0; j < W[i].size(); j++) {
-            u[i][j] = {};
-            u[i][j][0] = W[i][j][1];
-        }
-    }
-    Field v(Nx_tot, std::vector<State>(Ny_tot));
-    for (int i = 0; i < W.size(); i++) {
-        for (int j = 0; j < W[i].size(); j++) {
-            v[i][j] = {};
-            v[i][j][0] = W[i][j][2];
-        }
-    }
-    Field u_tilde(Nx_tot, std::vector<State>(Ny_tot));
-    for (int i = 0; i < W.size(); i++) {
-        for (int j = 0; j < W[i].size(); j++) {
-            u_tilde[i][j] = {};
-            u_tilde[i][j][0] = W[i][j][1];
-        }
-    }
-    Field v_tilde(Nx_tot, std::vector<State>(Ny_tot));
-    for (int i = 0; i < W.size(); i++) {
-        for (int j = 0; j < W[i].size(); j++) {
-            v_tilde[i][j] = {};
-            v_tilde[i][j][0] = W[i][j][2];
-        }
-    }
-    Field I_tilde(Nx_tot, std::vector<State>(Ny_tot));
-    for (int i = 0; i < W.size(); i++) {
-        for (int j = 0; j < W[i].size(); j++) {
-            I_tilde[i][j] = {};
-        }
-    }
-    Field alpha(Nx_tot, std::vector<State>(Ny_tot));
-    Field beta(Nx_tot, std::vector<State>(Ny_tot));
+    std::vector<std::vector<double>> rho(Nx_tot, std::vector<double>(Ny_tot));
+    std::vector<std::vector<double>> U  (Nx_tot, std::vector<double>(Ny_tot));
+    std::vector<std::vector<double>> V  (Nx_tot, std::vector<double>(Ny_tot));
+    std::vector<std::vector<double>> P  (Nx_tot, std::vector<double>(Ny_tot));
+    std::vector<std::vector<double>> T  (Nx_tot, std::vector<double>(Ny_tot));
+    std::vector<std::vector<double>> I  (Nx_tot, std::vector<double>(Ny_tot));
 
-    Field DM(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
-    Field DE(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
-    Field DW(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
-    Field DPU(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
-    Field DPV(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
+    for (int i = 0; i < Nx_tot; i++)
+        for (int j = 0; j < Ny_tot; j++) {
+            rho[i][j] = W[i][j][0];
+            U[i][j]   = W[i][j][1];
+            V[i][j]   = W[i][j][2];
+            P[i][j]   = W[i][j][NEQ-1];
+        }
 
-    EOS(rho, I, P, T);
-    BoundCond(P);
-    BoundCond(T);
+    // ЕОS
+    EOS(W, P, T, I, Nx_tot, Ny_tot);
+    FillGhost(P, Nx_tot, Ny_tot);
+    FillGhost(T, Nx_tot, Ny_tot);
+    FillGhost(I, Nx_tot, Ny_tot);
 
-    Arrenius(mass_fraction, T, dt, Nx_tot, Ny_tot);
-    BoundCond(mass_fraction);
+    // Реакция
+    ChemicalKinetics(P, rho, T, I, Nx_tot, Ny_tot);
+    FillGhost(I, Nx_tot, Ny_tot);
+    FillGhostMF(Nx_tot, Ny_tot);
 
-    Viscosity(q1, q2, q3, q4, rho, u, v);
-    BoundCond(q1);
-    BoundCond(q2);
-    BoundCond(q3);
-    BoundCond(q4);
+    // Вязкость
+    std::vector<std::vector<double>> Q1(Nx_tot, std::vector<double>(Ny_tot, 0.0));
+    std::vector<std::vector<double>> Q2(Nx_tot, std::vector<double>(Ny_tot, 0.0));
+    std::vector<std::vector<double>> Q3(Nx_tot, std::vector<double>(Ny_tot, 0.0));
+    std::vector<std::vector<double>> Q4(Nx_tot, std::vector<double>(Ny_tot, 0.0));
 
-    VelocityTilde(u_tilde, v_tilde, P, rho, x, y, q1, q2, q3, q4, u, v, dt);
-    BoundCond(u_tilde);
-    BoundCond(v_tilde);
+    ComputeViscosity(U, V, rho, Q1, Q2, Q3, Q4, Nx_tot, Ny_tot);
+    FillGhost(Q1, Nx_tot, Ny_tot);
+    FillGhost(Q2, Nx_tot, Ny_tot);
+    FillGhost(Q3, Nx_tot, Ny_tot);
+    FillGhost(Q4, Nx_tot, Ny_tot);
 
-    ZIPEnergy(I, I_tilde, P, dt, rho, u, u_tilde, v, v_tilde, q1, q2, q3, q4, x, y);
-    BoundCond(I_tilde);
+    // Скорости
+    std::vector<std::vector<double>> U_tilde(Nx_tot, std::vector<double>(Ny_tot));
+    std::vector<std::vector<double>> V_tilde(Nx_tot, std::vector<double>(Ny_tot));
+    for (int i = 0; i < Nx_tot; i++)
+        for (int j = 0; j < Ny_tot; j++) {
+            U_tilde[i][j] = U[i][j];
+            V_tilde[i][j] = V[i][j];
+        }
 
-    ChangingFluxes(alpha, beta, DM, DE, DW, DPU, DPV, u_tilde, v_tilde, x, y, dt, rho, I_tilde, u, v, mass_fraction);
+    VelocityTilde(U, V, P, rho, Q1, Q2, Q3, Q4,
+                  U_tilde, V_tilde, x, y, dt, Nx_tot, Ny_tot);
+    FillGhost(U_tilde, Nx_tot, Ny_tot);
+    FillGhost(V_tilde, Nx_tot, Ny_tot);
 
-    Repartition(rho, u, v, I, mass_fraction, I_tilde, u_tilde, v_tilde, DM, DE, DW, DPU, DPV);
-    BoundCond(rho);
-    BoundCond(u);
-    BoundCond(v);
-    BoundCond(I);
-    BoundCond(mass_fraction);
-    
-    for (int i = fict; i < Nx + fict - 1; i++) {
+    // ZIP Energy
+    std::vector<std::vector<double>> I_tilde(Nx_tot, std::vector<double>(Ny_tot));
+    for (int i = 0; i < Nx_tot; i++)
+        for (int j = 0; j < Ny_tot; j++)
+            I_tilde[i][j] = I[i][j];
+
+    ZIPEnergy(I, I_tilde, P, rho, U, V, U_tilde, V_tilde,
+              Q1, Q2, Q3, Q4, x, y, dt, Nx_tot, Ny_tot);
+    FillGhost(I_tilde, Nx_tot, Ny_tot);
+
+    // Перераспределение
+    TransportAndRepartition(rho, U, V, I,
+                             U_tilde, V_tilde, I_tilde,
+                             x, y, dt, Nx_tot, Ny_tot);
+
+    // Финал
+    for (int i = fict; i < Nx + fict - 1; i++)
         for (int j = fict; j < Ny + fict - 1; j++) {
+            if (IsWall(rho[i][j])) {
+                W_new[i][j] = W[i][j];
+                continue;
+            }
+            W_new[i][j][0] = rho[i][j];
+            W_new[i][j][1] = U[i][j];
+            W_new[i][j][2] = V[i][j];
 
-            W_new[i][j][0] = rho[i][j][0];
-            W_new[i][j][1] = u[i][j][0];
-            W_new[i][j][2] = v[i][j][0];
-
-            double kinetic = 0.5 * rho[i][j][0] * (u[i][j][0] * u[i][j][0] + v[i][j][0] * v[i][j][0]);
-            double E = rho[i][j][0] * I[i][j][0] + kinetic;
-
-            double P_new = (gamm - 1.0) * (E - kinetic);
-
-            W_new[i][j][NEQ - 1] = std::max(P_min, P_new);
+            double kinetic = 0.5*rho[i][j]*(U[i][j]*U[i][j]+V[i][j]*V[i][j]);
+            double E       = rho[i][j]*I[i][j] + kinetic;
+            W_new[i][j][NEQ-1] = std::max(P_min, (gamm-1.0)*(E-kinetic));
         }
-    }
 }
