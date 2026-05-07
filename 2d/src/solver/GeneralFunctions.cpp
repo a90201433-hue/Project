@@ -11,7 +11,7 @@
 #include "Mader.h"
 
 
-extern double gamm, Lx, Ly, C1, C2, T_init, R_gas, M, P_min, E_act, Z_freq, VISC, MINWT, GASW, MINGRHO;
+extern double gamm, gamm1, Lx, Ly, C1, C2, T_init, R_gas, M, P_min, E_act, Z_freq, VISC, MINWT, GASW, MINGRHO;
 extern int Nx, Ny, fict;
 
 extern std::string method, solver, time_method;

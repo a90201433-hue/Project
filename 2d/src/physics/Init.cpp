@@ -4,6 +4,7 @@
 #include <fstream>
 #include <map>
 #include <algorithm>
+#include <cmath>
 
 #include "ParseTOML.h"
 #include "Types.h"
@@ -12,7 +13,7 @@ extern int Nx, Ny;
 extern int Nx_glob, Ny_glob;
 extern int step_fo, step_max, bound_case;
 
-extern double Lx, Ly, t_max, time_fo, x0, gamm, CFL, Q, C1, C2,
+extern double Lx, Ly, t_max, time_fo, x0, gamm, gamm1, CFL, Q, C1, C2,
 				T_init, R_gas, M, P_min, E_act, Z_freq, VISC, MINWT, GASW, MINGRHO;
 
 extern std::string x_left_bound, x_right_bound,
@@ -33,6 +34,7 @@ void readConfig(const std::string& config_path) {
     }
 	
 	gamm = toml.root["simulation"].table["gamma"].number;
+	gamm1 = toml.root["simulation"].table["gamma1"].number;
 	auto& scheme = toml.root["scheme"].table;
 	
 	method = scheme["method"].str;
@@ -103,25 +105,118 @@ void Grid(std::vector<double>& x, std::vector<double>& y,
     }
 
 }
-
 void InitValues(Field& W, 
-				const std::vector<double>& x, 
-				const std::vector<double>& y,
-				const std::string& config_path) {
+                const std::vector<double>& x, 
+                const std::vector<double>& y,
+                const std::string& config_path) {
 
-	SimpleToml config, test;
-	
-	config.load(config_path);
-	std::string Test = config.root["simulation"].table["Test"].str;
-	std::string direction = config.root["simulation"].table["direction"].str;
+    SimpleToml config, test;
+    
+    config.load(config_path);
+    std::string Test = config.root["simulation"].table["Test"].str;
+    std::string direction = config.root["simulation"].table["direction"].str;
 
-	// Не тест Сода - тут будет функция заполнения
-	if (Test == "custom") {
-		std::cerr << "Кастомный тест пока не настроен!" << std::endl;
-        return;
-	} 
+    // ============================================================
+    // КАСТОМНЫЙ ТЕСТ: Задача Хааса–Штурггеванта
+    // ============================================================
+    if (Test == "custom") {
+		std::cout << "Запуск задачи Хааса–Штурггеванта (пузырь гелия)" << std::endl;
+		
+		// Параметры ударной волны (M = 1.22)
+		double rho0 = 1.29;      // кг/м³, плотность воздуха при н.у.
+		double P0 = 101325.0;    // Па, атмосферное давление
+		double u0 = 0.0;
+		
+		double M_shock = 1.22;
+		double gamma_air = 1.4;
+		
+		double P_ratio = 1.0 + (2.0 * gamma_air / (gamma_air + 1.0)) * (M_shock * M_shock - 1.0);
+		double P_shock = P0 * P_ratio;
+		
+		double rho_ratio = ((gamma_air + 1.0) * M_shock * M_shock) / (2.0 + (gamma_air - 1.0) * M_shock * M_shock);
+		double rho_shock = rho0 * rho_ratio;
+		
+		double u_shock = (M_shock * sqrt(gamma_air * P0 / rho0)) * (1.0 - 1.0 / rho_ratio);
+		std::cout<<u_shock<<std::endl;
+		// Параметры пузыря гелия
+		double R_bubble = 0.025;
+		double center_x = 0.175;
+		double center_y = 0.0445;
+		
+		double rho_He = 0.138;
+		double P_He = P0;
+		double u_He = 0.0;
+		
+		double gamma_He = 1.66666667;
+		
+		gamm = gamma_air;
+		gamm1 = gamma_He;
+		
+		double shock_position = 0.12;
+		
+		size_t Nx_tot = Nx + 2*fict - 1;
+		size_t Ny_tot = Ny + 2*fict - 1;
+		
+		auto cell_center_x = [&](size_t i) {
+			return 0.5 * (x[i] + x[i + 1]);
+		};
+		
+		auto cell_center_y = [&](size_t j) {
+			return 0.5 * (y[j] + y[j + 1]);
+		};
+		
+		for (size_t i = fict; i < Nx_tot - fict; i++) {
+			for (size_t j = fict; j < Ny_tot - fict; j++) {
+				double xc = cell_center_x(i);
+				double yc = cell_center_y(j);
+				
+				double dist = sqrt((xc - center_x) * (xc - center_x) + 
+								(yc - center_y) * (yc - center_y));
+				
+				bool inside_bubble = (dist < R_bubble);
+				bool behind_shock = (xc < shock_position);
+				
+				if (inside_bubble) {
+					// Внутри пузыря гелия
+					W[i][j][0] = rho_He;   // плотность
+					W[i][j][1] = u_He;     // скорость U
+					W[i][j][2] = 0.0;      // скорость V
+					W[i][j][3] = 0.0;      // массовая доля (0 = гелий)
+					W[i][j][4] = P_He;     // давление
+				} 
+				else {
+					// Снаружи пузыря (воздух)
+					if (behind_shock) {
+						W[i][j][0] = rho_shock;
+						W[i][j][1] = u_shock;
+						W[i][j][2] = 0.0;
+						W[i][j][3] = 1.0;  // массовая доля (1 = воздух)
+						W[i][j][4] = P_shock;
+					} 
+					else {
+						W[i][j][0] = rho0;
+						W[i][j][1] = u0;
+						W[i][j][2] = 0.0;
+						W[i][j][3] = 1.0;  // массовая доля (1 = воздух)
+						W[i][j][4] = P0;
+					}
+				}
+			}
+		}
+		
+		t_max = 0.0006;
+		
+		std::cout << "Пузырь гелия: R = " << R_bubble << " м, центр = (" 
+				<< center_x << ", " << center_y << ")" << std::endl;
+		std::cout << "t_max = " << t_max * 1e6 << " мкс" << std::endl;
+		
+		return;
+	}
 
-	if (!test.load("tests.toml")) {
+	// ============================================================
+	// СТАНДАРТНЫЕ ТЕСТЫ (Sod, Lax, и т.д.)
+	// ============================================================
+	/*if (!test.load("tests.toml")) {
         std::cerr << "Нет файла с тестами" << std::endl;
         return;
     }
@@ -130,7 +225,6 @@ void InitValues(Field& W,
 	auto& values = test.root[Test].table;
 	double rho_L, u_L, P_L;
 	double rho_R, u_R, P_R;
-
 
 	rho_L = values["rho_L"].number;
 	u_L = values["u_L"].number;
@@ -154,25 +248,32 @@ void InitValues(Field& W,
 		for (size_t i = fict; i < Nx_tot - fict; i++) {
 			for (size_t j = fict; j < Ny_tot - fict; j++) {
 				double xc = cell_center(i);
-				if (xc < x0)
+				if (xc < x0) {
 					W[i][j] = {rho_L, u_L, 0.0, P_L};
-				else
+					mass_fraction_global[i][j][0] = 1.0;  // одно вещество
+				}
+				else {
 					W[i][j] = {rho_R, u_R, 0.0, P_R};
+					mass_fraction_global[i][j][0] = 1.0;
+				}
 			}
 		}
 	}
-
 	else if (direction == "y") {
 		for (size_t i = fict; i < Nx_tot - fict; i++) {
 			for (size_t j = fict; j < Ny_tot - fict; j++) {
-				double xc = cell_center(i);
-				if (xc < x0)
+				double yc = cell_center(j);
+				if (yc < x0) {
 					W[j][i] = {rho_L, 0.0, u_L, P_L};
-				else
+					mass_fraction_global[j][i][0] = 1.0;
+				}
+				else {
 					W[j][i] = {rho_R, 0.0, u_R, P_R};
+					mass_fraction_global[j][i][0] = 1.0;
+				}
 			}
 		}
-	}
+	}*/
 }
 
 

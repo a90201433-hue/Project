@@ -24,7 +24,7 @@ Domain dom; // Локальный характеристики доменчик�
 
 int step_fo, step_max, bound_case;
 
-double Lx, Ly, t_max, time_fo, x0, gamm, CFL, Q, C1, C2, 
+double Lx, Ly, t_max, time_fo, x0, gamm, gamm1, CFL, Q, C1, C2, 
      T_init, R_gas, M, P_min, E_act, Z_freq, VISC, MINWT, GASW, MINGRHO;
 
 std::string x_left_bound, x_right_bound,
@@ -47,7 +47,7 @@ void GetDt(const Field& W,
 
 	double max_lambda_x = 0.0;
     double max_lambda_y = 0.0;
-
+	double gamma_mix, W_frac;
 	double rho, u, v, P;
 	double c;
 
@@ -60,9 +60,10 @@ void GetDt(const Field& W,
             rho = W[i][j][0];
             u   = W[i][j][1];
             v   = W[i][j][2];
+			W_frac = W[i][j][3];
             P   = W[i][j][NEQ - 1];
-
-            c = std::sqrt(gamm * P / rho);
+			gamma_mix = W_frac * gamm + (1.0 - W_frac) * gamm1;
+            c = std::sqrt(gamma_mix * P / rho);
 
             max_lambda_x = std::max(max_lambda_x,
                                     std::abs(u) + c);
@@ -82,7 +83,7 @@ void GetDt(const Field& W,
 
 
 int main(int argc, char* argv[]) {
-
+	
 	MPI_Init(&argc, &argv);
 
 	int rank, p;
@@ -143,7 +144,7 @@ int main(int argc, char* argv[]) {
 			file << "py = " << py << "\n";
 		}
 	} */
-
+	
 	// Определяем локальные размеры наших областей
 	dom = BuildDomain(rank, px, py, Nx_glob, Ny_glob);
 
@@ -163,7 +164,7 @@ int main(int argc, char* argv[]) {
 	// 	{
 	// 		W_0[i][j][0] = dom.rank;
 	// 	}
-
+	
 	// Применение ГУ
 	BoundCond(W_0, dom);
 	// Обмен фиктивными ячейками
@@ -198,7 +199,7 @@ int main(int argc, char* argv[]) {
 	t_start = MPI_Wtime();
 
 	while (step <= step_max && t <= t_max) {
-
+		
 		// Локальный dt
 		GetDt(W, dom.x, dom.y, dt);
 
@@ -212,7 +213,7 @@ int main(int argc, char* argv[]) {
 
 		t += dt;
 
-
+		std::cout<<t<<"|   |"<<dt<<std::endl;
 		UpdateArrays(W, W_new,
 					dom.x, dom.y,
 					dt);
