@@ -83,7 +83,7 @@ def main():
 
     X, Y = np.meshgrid(x_vals, y_vals)
 
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(32, 6))
 
     cmap = ax.pcolormesh(X, Y, field,
                          shading="auto",
