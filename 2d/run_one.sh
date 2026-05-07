@@ -31,7 +31,7 @@ echo "Making slice plot"
 python3 PlotSlice.py "$name"
 
 echo "Making maps"
-for field in speed P rho u v; do
+for field in speed P rho u v F; do
     python3 PlotMap.py "$name" "$field"
 done
 echo ""

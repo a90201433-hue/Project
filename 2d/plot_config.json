@@ -19,5 +19,9 @@
   "v": {
     "cmap": "coolwarm",
     "mode": "none"
+  },
+  "F": {
+    "cmap": "viridis",
+    "mode": "none"
   }
 }

@@ -52,7 +52,7 @@ void SaveFieldToCSV(const Field& W,
         
     else {
         file.open(filename);
-        file << "t,x,y,rho,u,v,P,e\n";
+        file << "t,x,y,rho,u,v,F,P,e\n";
     }
 
     if (!file.is_open())
@@ -80,7 +80,8 @@ void SaveFieldToCSV(const Field& W,
                  << W[i][j][0] << "," 	/* rho */
                  << W[i][j][1] << "," 	/* u */
                  << W[i][j][2] << "," 	/* v */
-                 << W[i][j][3] << ","	/* P */
+                 << W[i][j][3] << ","	/* F */
+                 << W[i][j][NEQ-1] <<","/* P */
 				 << e << "\n"; 			/* e */
         }
     }

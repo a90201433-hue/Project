@@ -51,14 +51,15 @@ void Viscosity(Field& q1, Field& q2, Field& q3, Field& q4, const Field& W) {
             double rho = W[i][j][0];
             double u = W[i][j][1];
             double v = W[i][j][2];
-            
+            double dv = (v - W[i][j + 1][2]);
+            double dv = (u - W[i + 1][j][1]) ;
             // Грань 1 (нижняя, направление Z): сжатие если V(i,j) >= V(i,j+1)
             q1[i][j][0] = (v >= W[i][j + 1][2]) 
-                         ? VISC * rho * (v - W[i][j + 1][2]) 
+                         ? VISC * rho * dv*dv; 
                          : 0.0;
             // Грань 2 (левая, направление R): сжатие если U(i,j) >= U(i+1,j)
             q2[i][j][0] = (u >= W[i + 1][j][1]) 
-                         ? VISC * rho * (u - W[i + 1][j][1]) 
+                         ? VISC * rho * du*du;
                          : 0.0;
         }
     }
@@ -67,8 +68,8 @@ void Viscosity(Field& q1, Field& q2, Field& q3, Field& q4, const Field& W) {
     // Грань 4 (правая) = левая грань ячейки (i-1, j)
     for (int i = fict; i < Nx + fict - 1; i++) {
         for (int j = fict; j < Ny + fict - 1; j++) {
-            q3[i][j][0] = (j > fict) ? q1[i][j - 1][0] : 0.0;
-            q4[i][j][0] = (i > fict) ? q2[i - 1][j][0] : 0.0;
+            q3[i][j][0] = (j > fict) ? q1[i][j + 1][0] : 0.0;
+            q4[i][j][0] = (i > fict) ? q2[i + 1][j][0] : 0.0;
         }
     }
 }
@@ -94,18 +95,18 @@ void VelocityTilde(Field& u_tilde, Field& v_tilde, const Field& W,
             double dy = y[j] - y[j - 1];
 
             // Обновление скорости V (вертикальная)
-            v_tilde[i][j][0] = v - dt / (rho * 2.0 * dy) 
+            v_tilde[i][j][0] = v - dt / (rho * dy) 
                               * ((P3 - P1) + (q3[i][j][0] - q1[i][j][0]));
             
             // Обновление скорости U (горизонтальная)
-            u_tilde[i][j][0] = u - dt / (rho * 2.0 * dx) 
+            u_tilde[i][j][0] = u - dt / (rho * dx) 
                               * ((P4 - P2) + (q4[i][j][0] - q2[i][j][0]));
         }
     }
 }
 
 // Фаза III: ZIP Energy Equation
-void ZIPEnergy(Field& I_tilde, const Field& W, double dt,
+void ZIPEnergy(Field& I_tilde, Field& rho_tilde, const Field& W, double dt,
                const Field& u_tilde, const Field& v_tilde,
                const Field& q1, const Field& q2, const Field& q3, const Field& q4,
                const std::vector<double>& x, const std::vector<double>& y) {
@@ -130,6 +131,10 @@ void ZIPEnergy(Field& I_tilde, const Field& W, double dt,
             
             double dx = x[i] - x[i - 1];
             double dy = y[j] - y[j - 1];
+
+            double divV = (u_tilde[i+1][j][0] - u_tilde[i-1][j][0]) / (2*dx) 
+            + (v_tilde[i][j+1][0] - v_tilde[i][j-1][0]) / (2*dy);
+            rho_tilde[i][j][0] = rho - rho * dt * divV;
 
             I_tilde[i][j][0] = I 
                 - dt / (4.0 * rho) 
@@ -188,7 +193,7 @@ double SharpatovCorrection(double W_donor, const Field& W, int i, int j, int Nx_
 void ChangingFluxes(Field& DM, Field& DE, Field& DW, Field& DPU, Field& DPV,
                     const Field& u_tilde, const Field& v_tilde,
                     const std::vector<double>& x, const std::vector<double>& y,
-                    double dt, const Field& W, const Field& I_tilde) {
+                    double dt, const Field& W, const Field& I_tilde, const Field& rho_tilde) {
     
     int Nx_tot = Nx + 2 * fict - 1;
     int Ny_tot = Ny + 2 * fict - 1;
@@ -209,7 +214,7 @@ void ChangingFluxes(Field& DM, Field& DE, Field& DW, Field& DPU, Field& DPV,
             // ========== ПЕРЕНОС В НАПРАВЛЕНИИ R (влево-вправо) ==========
             if (alpha >= 0) {
                 // Масса течёт слева направо: донор = (i-1,j), акцептор = (i,j)
-                double rho_donor = W[i - 1][j][0];
+                double rho_donor = rho_tilde[i - 1][j][0];
                 double DMASS = rho_donor * std::abs(alpha);
                 
                 double u_tilde_donor = u_tilde[i - 1][j][0];
@@ -232,7 +237,7 @@ void ChangingFluxes(Field& DM, Field& DE, Field& DW, Field& DPU, Field& DPV,
             }
             else {
                 // Масса течёт справа налево: донор = (i,j), акцептор = (i-1,j)
-                double rho_donor = W[i][j][0];
+                double rho_donor = rho_tilde[i][j][0];
                 double DMASS = rho_donor * std::abs(alpha);
                 
                 double u_tilde_donor = u_tilde[i][j][0];
@@ -257,7 +262,7 @@ void ChangingFluxes(Field& DM, Field& DE, Field& DW, Field& DPU, Field& DPV,
             // ========== ПЕРЕНОС В НАПРАВЛЕНИИ Z (вверх-вниз) ==========
             if (beta >= 0) {
                 // Масса течёт снизу вверх: донор = (i,j-1), акцептор = (i,j)
-                double rho_donor = W[i][j - 1][0];
+                double rho_donor = rho_tilde[i][j - 1][0];
                 double DMASS = rho_donor * std::abs(beta);
                 
                 double u_tilde_donor = u_tilde[i][j - 1][0];
@@ -280,7 +285,7 @@ void ChangingFluxes(Field& DM, Field& DE, Field& DW, Field& DPU, Field& DPV,
             }
             else {
                 // Масса течёт сверху вниз: донор = (i,j), акцептор = (i,j-1)
-                double rho_donor = W[i][j][0];
+                double rho_donor = rho_tilde[i][j][0];
                 double DMASS = rho_donor * std::abs(beta);
                 
                 double u_tilde_donor = u_tilde[i][j][0];
@@ -420,7 +425,8 @@ void Mader(Field& W_new, const Field& W, const std::vector<double>& x,
     Field u_tilde(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
     Field v_tilde(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
     Field I_tilde(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
-    
+    Field rho_tilde(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0})); 
+
     Field DM(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
     Field DE(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
     Field DW(Nx_tot, std::vector<State>(Ny_tot, {0.0, 0.0, 0.0, 0.0}));
@@ -437,10 +443,10 @@ void Mader(Field& W_new, const Field& W, const std::vector<double>& x,
     VelocityTilde(u_tilde, v_tilde, W_work, x, y, q1, q2, q3, q4, dt);
     
     // ========== ФАЗА III: ZIP Energy Equation ==========
-    ZIPEnergy(I_tilde, W_work, dt, u_tilde, v_tilde, q1, q2, q3, q4, x, y);
+    ZIPEnergy(I_tilde,rho_tilde, W_work, dt, u_tilde, v_tilde, q1, q2, q3, q4, x, y);
     
     // ========== ФАЗА IV: Перенос массы ==========
-    ChangingFluxes(DM, DE, DW, DPU, DPV, u_tilde, v_tilde, x, y, dt, W_work, I_tilde);
+    ChangingFluxes(DM, DE, DW, DPU, DPV, u_tilde, v_tilde, x, y, dt, W_work, I_tilde, rho_tilde);
     
     // ========== ФАЗА V: Перераспределение ==========
     Repartition(W_work, I_tilde, u_tilde, v_tilde, DM, DE, DW, DPU, DPV);

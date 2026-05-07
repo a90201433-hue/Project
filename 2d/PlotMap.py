@@ -62,12 +62,14 @@ def main():
     rho = reshape_field("rho")
     u   = reshape_field("u")
     v   = reshape_field("v")
+    F   = reshape_field("F")
     P   = reshape_field("P")
     speed = np.sqrt(u**2 + v**2)
 
     fields = {
         "rho": (rho, r"$\rho$"),
         "P": (P, r"$P$"),
+        "F": (F, r"$F$"),
         "u": (u, r"$u$"),
         "v": (v, r"$v$"),
         "speed": (speed, r"$|\vec{u}|$")
